@@ -1,0 +1,161 @@
+{
+  "$id": "https://ghost-frequency.local/schemas/events.schema.json",
+  "title": "GhostFrequencyEventBatch",
+  "definitions": {
+    "KeySpec": {
+      "type": "object",
+      "required": ["tonic", "scale"],
+      "properties": {
+        "tonic": { "type": "integer", "minimum": 0, "maximum": 11 },
+        "scale": {
+          "type": "string",
+          "enum": [
+            "ionian",
+            "dorian",
+            "phrygian",
+            "lydian",
+            "mixolydian",
+            "aeolian",
+            "locrian",
+            "harmonicMinor"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "ChordSpec": {
+      "type": "object",
+      "required": ["root", "label", "intervals"],
+      "properties": {
+        "root": { "type": "integer", "minimum": 0, "maximum": 127 },
+        "label": { "type": "string" },
+        "numeral": { "type": "string" },
+        "intervals": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "LayerId": {
+      "type": "string",
+      "enum": ["pad", "arp", "bass", "lead", "drums", "texture"]
+    },
+    "NoteEvent": {
+      "type": "object",
+      "required": ["kind", "layer", "beat", "durBeats", "midi", "vel"],
+      "properties": {
+        "kind": { "const": "note" },
+        "layer": { "$ref": "#/definitions/LayerId" },
+        "beat": { "type": "number" },
+        "durBeats": { "type": "number", "minimum": 0 },
+        "midi": { "type": "integer", "minimum": 0, "maximum": 127 },
+        "vel": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "AutomationTarget": {
+      "type": "string",
+      "enum": [
+        "filter.pad",
+        "filter.arp",
+        "filter.bass",
+        "filter.lead",
+        "filter.texture",
+        "send.reverb",
+        "send.delay",
+        "texture.noise",
+        "master.filter",
+        "layer.gain.pad",
+        "layer.gain.arp",
+        "layer.gain.bass",
+        "layer.gain.lead",
+        "layer.gain.drums",
+        "layer.gain.texture"
+      ]
+    },
+    "AutomationEvent": {
+      "type": "object",
+      "required": ["kind", "target", "beat", "value"],
+      "properties": {
+        "kind": { "const": "automation" },
+        "target": { "$ref": "#/definitions/AutomationTarget" },
+        "beat": { "type": "number" },
+        "value": { "type": "number", "minimum": 0, "maximum": 1 },
+        "rampBeats": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "SectionEvent": {
+      "type": "object",
+      "required": ["kind", "beat", "name", "sectionIndex", "key", "energy"],
+      "properties": {
+        "kind": { "const": "section" },
+        "beat": { "type": "number" },
+        "name": { "type": "string" },
+        "sectionIndex": { "type": "integer", "minimum": 0 },
+        "key": { "$ref": "#/definitions/KeySpec" },
+        "chord": { "$ref": "#/definitions/ChordSpec" },
+        "energy": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "AudioClipEvent": {
+      "type": "object",
+      "required": ["kind", "layer", "beat", "durBeats", "uri"],
+      "properties": {
+        "kind": { "const": "audioClip" },
+        "layer": { "$ref": "#/definitions/LayerId" },
+        "beat": { "type": "number" },
+        "durBeats": { "type": "number", "minimum": 0 },
+        "uri": { "type": "string" },
+        "gain": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "MusicEvent": {
+      "oneOf": [
+        { "$ref": "#/definitions/NoteEvent" },
+        { "$ref": "#/definitions/AutomationEvent" },
+        { "$ref": "#/definitions/SectionEvent" },
+        { "$ref": "#/definitions/AudioClipEvent" }
+      ]
+    },
+    "GenerationParams": {
+      "type": "object",
+      "required": ["mood", "energy", "complexity", "variation", "tempo", "seed"],
+      "properties": {
+        "mood": { "type": "string", "enum": ["dreamy", "dark", "nostalgic", "space"] },
+        "energy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "complexity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "variation": { "type": "number", "minimum": 0, "maximum": 1 },
+        "tempo": { "type": ["number", "null"], "minimum": 40, "maximum": 200 },
+        "seed": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "EventBatch": {
+      "type": "object",
+      "required": ["version", "startBeat", "endBeat", "tempo", "timeSig", "events"],
+      "properties": {
+        "version": { "type": "integer" },
+        "startBeat": { "type": "number" },
+        "endBeat": { "type": "number" },
+        "tempo": { "type": "number", "minimum": 40, "maximum": 200 },
+        "timeSig": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "events": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/MusicEvent" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$ref": "#/definitions/EventBatch"
+}

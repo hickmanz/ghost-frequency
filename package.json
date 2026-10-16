@@ -1,0 +1,13 @@
+{
+  "name": "ghost-frequency",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["web", "shared"],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "build": "npm run build -w web",
+    "test": "npm run test -w web",
+    "typecheck": "npm run typecheck -w web",
+    "test:py": "cd python && pytest"
+  }
+}
