@@ -26,6 +26,7 @@ export class DrumsInstrument implements Instrument {
   readonly output: Tone.Gain;
 
   private readonly bus: Tone.Gain;
+  private readonly glue: Tone.Compressor;
   private readonly ceiling: Tone.Filter;
 
   private readonly kick: Tone.MembraneSynth;
@@ -50,9 +51,10 @@ export class DrumsInstrument implements Instrument {
     this.preset = p;
 
     this.output = new Tone.Gain(dbToGain(p.levelDb));
-    this.ceiling = new Tone.Filter({ type: 'lowpass', frequency: p.ceilingHz, Q: 0.5, rolloff: -12 });
+    this.glue = new Tone.Compressor({ threshold: -22, ratio: 2.8, attack: 0.008, release: 0.12, knee: 6 });
+    this.ceiling = new Tone.Filter({ type: 'lowpass', frequency: p.ceilingHz, Q: 0.4, rolloff: -24 });
     this.bus = new Tone.Gain(1);
-    this.bus.chain(this.ceiling, this.output);
+    this.bus.chain(this.glue, this.ceiling, this.output);
 
     const mkFilter = (type: BiquadFilterType, freq: number, q = 0.7): Tone.Filter => {
       const f = new Tone.Filter({ type, frequency: freq, Q: q, rolloff: -12 });
@@ -71,43 +73,43 @@ export class DrumsInstrument implements Instrument {
 
     // snare = noise + body + gated tail
     this.snareNoise = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: { attack: 0.001, decay: p.snareNoiseDecay, sustain: 0, release: 0.05 },
+      noise: { type: 'pink' },
+      envelope: { attack: 0.002, decay: p.snareNoiseDecay, sustain: 0, release: 0.08 },
       volume: p.snareDb,
-    }).chain(mkFilter('highpass', 1300), this.bus);
+    }).chain(mkFilter('highpass', 900), mkFilter('lowpass', 5200, 0.5), this.bus);
     this.snareBody = new Tone.MembraneSynth({
-      pitchDecay: 0.02,
-      octaves: 0.9,
-      oscillator: { type: 'triangle' },
-      envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.05 },
-      volume: p.snareDb - 5,
+      pitchDecay: 0.03,
+      octaves: 0.65,
+      oscillator: { type: 'sine' },
+      envelope: { attack: 0.001, decay: 0.14, sustain: 0, release: 0.08 },
+      volume: p.snareDb - 4,
     }).connect(this.bus);
     this.snareTail = new Tone.NoiseSynth({
       noise: { type: 'pink' },
-      envelope: { attack: 0.006, decay: 0.05, sustain: 0.55, release: 0.05 },
+      envelope: { attack: 0.012, decay: 0.08, sustain: 0.35, release: 0.12 },
       volume: p.snareTailDb,
-    }).chain(mkFilter('bandpass', 1800, 0.6), mkFilter('lowpass', 5500, 0.5), this.bus);
+    }).chain(mkFilter('bandpass', 1400, 0.5), mkFilter('lowpass', 4200, 0.5), this.bus);
 
     // clap
     this.clap = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: { attack: 0.001, decay: 0.13, sustain: 0, release: 0.04 },
+      noise: { type: 'pink' },
+      envelope: { attack: 0.001, decay: 0.11, sustain: 0, release: 0.06 },
       volume: p.clapDb,
-    }).chain(mkFilter('bandpass', 1500, 0.9), this.bus);
+    }).chain(mkFilter('bandpass', 1200, 0.55), mkFilter('lowpass', 6000, 0.5), this.bus);
 
     // hats
     this.hatHp = mkFilter('highpass', p.hatHpHz, 0.5);
     this.hat = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: { attack: 0.001, decay: p.hatDecay, sustain: 0, release: 0.02 },
+      noise: { type: 'pink' },
+      envelope: { attack: 0.001, decay: p.hatDecay, sustain: 0, release: 0.03 },
       volume: p.hatDb,
-    }).chain(this.hatHp, this.bus);
+    }).chain(this.hatHp, mkFilter('lowpass', 12000, 0.4), this.bus);
     this.openHp = mkFilter('highpass', p.hatHpHz, 0.5);
     this.openHat = new Tone.NoiseSynth({
-      noise: { type: 'white' },
-      envelope: { attack: 0.002, decay: p.openHatDecay, sustain: 0, release: 0.08 },
+      noise: { type: 'pink' },
+      envelope: { attack: 0.003, decay: p.openHatDecay, sustain: 0, release: 0.12 },
       volume: p.openHatDb,
-    }).chain(this.openHp, this.bus);
+    }).chain(this.openHp, mkFilter('lowpass', 11000, 0.4), this.bus);
 
     // crash
     this.crash = new Tone.NoiseSynth({
@@ -182,16 +184,18 @@ export class DrumsInstrument implements Instrument {
         break;
       case DRUM.snare:
         if (!this.playSample('snare', time, vel)) {
-          this.snareNoise.triggerAttackRelease(p.snareNoiseDecay + 0.02, time, v);
-          this.snareBody.triggerAttackRelease(p.snareBodyHz, 0.1, time, v);
+          this.snareNoise.triggerAttackRelease(p.snareNoiseDecay + 0.03, time, v * 0.92);
+          this.snareBody.triggerAttackRelease(p.snareBodyHz, 0.14, time, v * 0.85);
+          this.snareTail.triggerAttackRelease(p.snareTailGate, time + 0.006, v * 0.55);
+        } else {
+          this.snareTail.triggerAttackRelease(p.snareTailGate * 0.65, time + 0.004, v * 0.22);
         }
-        // gated-reverb feel (also on top of a sampled snare, quietly)
-        this.snareTail.triggerAttackRelease(p.snareTailGate, time + 0.004, v);
         break;
       case DRUM.clap:
         if (!this.playSample('clap', time, vel)) {
-          for (let i = 0; i < 3; i++) this.clap.triggerAttackRelease(0.012, time + i * 0.011, v * (0.55 + 0.15 * i));
-          this.clap.triggerAttackRelease(0.12, time + 0.033, v);
+          this.clap.triggerAttackRelease(0.014, time, v * 0.7);
+          this.clap.triggerAttackRelease(0.014, time + 0.018, v * 0.85);
+          this.clap.triggerAttackRelease(0.1, time + 0.032, v * 0.75);
         }
         break;
       case DRUM.hatClosed:
@@ -277,6 +281,7 @@ export class DrumsInstrument implements Instrument {
       s?.gain.dispose();
     }
     this.bus.dispose();
+    this.glue.dispose();
     this.ceiling.dispose();
     this.output.dispose();
   }

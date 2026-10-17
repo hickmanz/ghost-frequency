@@ -34,7 +34,7 @@ describe('formatOverridesForCopy', () => {
     const text = formatOverridesForCopy('dreamy', {
       'fx.delayFeedback': 0.5,
       'arp.cutoffMax': 6000,
-      'lead.vibratoAmount': 0.18, // equal to default -> skipped
+      'lead.vibratoAmount': 0.14, // equal to default -> skipped
       'bogus.key': 3, // unknown -> skipped
       'arp.q': Number.NaN, // invalid -> skipped
     });

@@ -227,15 +227,15 @@ const dreamy: MoodPreset = {
     ampDecay: 0.3, sustain: 0.6, release: 0.18, glide: 0.03, sawDb: -4, subDb: -6, drive: 0.12, levelDb: 0,
   },
   lead: {
-    wave0: 'sawtooth', unison0: 2, wave1: 'sawtooth', sawDb: -3, squareDb: -6, harmonicity: 1.004, cutoffMin: 600, cutoffMax: 5500, filterDefault: 0.5, q: 1.2,
-    filterOctaves: 1.6, filterDecay: 0.5, attack: 0.07, decay: 0.4, sustain: 0.75, release: 1.5, portamento: 0.09,
-    vibratoAmount: 0.18, vibratoRate: 4.6, vibratoDelay: 0.7, vibratoFade: 1.6, chorusWet: 0.5, levelDb: 0,
+    wave0: 'sawtooth', unison0: 2, wave1: 'triangle', sawDb: -3, squareDb: -9, harmonicity: 1.002, cutoffMin: 600, cutoffMax: 4800, filterDefault: 0.42, q: 1.0,
+    filterOctaves: 1.35, filterDecay: 0.55, attack: 0.11, decay: 0.45, sustain: 0.78, release: 1.8, portamento: 0.07,
+    vibratoAmount: 0.14, vibratoRate: 4.4, vibratoDelay: 0.85, vibratoFade: 1.9, chorusWet: 0.38, levelDb: -1,
   },
   drums: {
-    kickHz: 50, kickPitchOct: 2.2, kickPitchDecay: 0.035, kickDecay: 0.32, kickDb: -6,
-    snareBodyHz: 190, snareNoiseDecay: 0.14, snareDb: -14, snareTailDb: -24, snareTailGate: 0.2,
-    clapDb: -16, hatDb: -24, hatDecay: 0.045, hatHpHz: 7000, openHatDb: -26, openHatDecay: 0.3,
-    tomDb: -12, crashDb: -26, ceilingHz: 10000, levelDb: 7,
+    kickHz: 50, kickPitchOct: 2.0, kickPitchDecay: 0.04, kickDecay: 0.36, kickDb: -7,
+    snareBodyHz: 185, snareNoiseDecay: 0.17, snareDb: -15, snareTailDb: -28, snareTailGate: 0.18,
+    clapDb: -17, hatDb: -26, hatDecay: 0.055, hatHpHz: 5800, openHatDb: -28, openHatDecay: 0.32,
+    tomDb: -13, crashDb: -28, ceilingHz: 8500, levelDb: 5,
   },
   texture: {
     pinkDb: -3, brownDb: -9, noiseCutoffMin: 300, noiseCutoffMax: 7000, noiseFilterDefault: 0.5,
@@ -247,8 +247,8 @@ const dreamy: MoodPreset = {
   fx: {
     reverbReturnDb: -3, reverbLpHz: 9000, reverbHpHz: 180, delayBeats: 0.75, delayFeedback: 0.42, delayLpHz: 3800,
     delayReturnDb: -3, delayToReverb: 0.35,
-    reverbSend: { pad: 0.55, arp: 0.5, bass: 0.05, lead: 0.6, drums: 0.22, texture: 0.5, bell: 0.62 },
-    delaySend: { pad: 0.1, arp: 0.5, bass: 0, lead: 0.5, drums: 0.06, texture: 0.1, bell: 0.35 },
+    reverbSend: { pad: 0.55, arp: 0.5, bass: 0.05, lead: 0.52, drums: 0.28, texture: 0.5, bell: 0.62 },
+    delaySend: { pad: 0.1, arp: 0.5, bass: 0, lead: 0.4, drums: 0.05, texture: 0.1, bell: 0.35 },
   },
 };
 
@@ -268,15 +268,15 @@ const dark: MoodPreset = {
     ampDecay: 0.32, sustain: 0.65, release: 0.2, glide: 0.06, sawDb: -3, subDb: -5, drive: 0.4, levelDb: 0,
   },
   lead: {
-    wave0: 'sawtooth', unison0: 2, wave1: 'sawtooth', sawDb: -2, squareDb: -5, harmonicity: 1.003, cutoffMin: 350, cutoffMax: 3200, filterDefault: 0.4, q: 1.8,
-    filterOctaves: 1.8, filterDecay: 0.45, attack: 0.08, decay: 0.4, sustain: 0.7, release: 1.2, portamento: 0.05,
-    vibratoAmount: 0.12, vibratoRate: 4.4, vibratoDelay: 0.8, vibratoFade: 1.8, chorusWet: 0.35, levelDb: 0,
+    wave0: 'sawtooth', unison0: 2, wave1: 'triangle', sawDb: -2, squareDb: -8, harmonicity: 1.002, cutoffMin: 350, cutoffMax: 2800, filterDefault: 0.36, q: 1.4,
+    filterOctaves: 1.45, filterDecay: 0.5, attack: 0.12, decay: 0.42, sustain: 0.72, release: 1.4, portamento: 0.04,
+    vibratoAmount: 0.1, vibratoRate: 4.2, vibratoDelay: 0.9, vibratoFade: 2.0, chorusWet: 0.28, levelDb: -1,
   },
   drums: {
-    kickHz: 46, kickPitchOct: 2.6, kickPitchDecay: 0.04, kickDecay: 0.38, kickDb: -4,
-    snareBodyHz: 170, snareNoiseDecay: 0.16, snareDb: -13, snareTailDb: -24, snareTailGate: 0.22,
-    clapDb: -17, hatDb: -26, hatDecay: 0.05, hatHpHz: 6500, openHatDb: -28, openHatDecay: 0.3,
-    tomDb: -11, crashDb: -28, ceilingHz: 7000, levelDb: 7,
+    kickHz: 46, kickPitchOct: 2.3, kickPitchDecay: 0.045, kickDecay: 0.4, kickDb: -5,
+    snareBodyHz: 165, snareNoiseDecay: 0.18, snareDb: -14, snareTailDb: -30, snareTailGate: 0.16,
+    clapDb: -18, hatDb: -28, hatDecay: 0.058, hatHpHz: 5200, openHatDb: -30, openHatDecay: 0.32,
+    tomDb: -12, crashDb: -30, ceilingHz: 6200, levelDb: 5,
   },
   texture: {
     pinkDb: -9, brownDb: -2, noiseCutoffMin: 150, noiseCutoffMax: 2500, noiseFilterDefault: 0.45,
@@ -288,8 +288,8 @@ const dark: MoodPreset = {
   fx: {
     reverbReturnDb: -5, reverbLpHz: 4800, reverbHpHz: 160, delayBeats: 1.0, delayFeedback: 0.38, delayLpHz: 2400,
     delayReturnDb: -5, delayToReverb: 0.3,
-    reverbSend: { pad: 0.4, arp: 0.3, bass: 0.03, lead: 0.45, drums: 0.18, texture: 0.4, bell: 0.5 },
-    delaySend: { pad: 0.05, arp: 0.3, bass: 0, lead: 0.35, drums: 0.04, texture: 0.05, bell: 0.28 },
+    reverbSend: { pad: 0.4, arp: 0.3, bass: 0.03, lead: 0.4, drums: 0.24, texture: 0.4, bell: 0.5 },
+    delaySend: { pad: 0.05, arp: 0.3, bass: 0, lead: 0.3, drums: 0.04, texture: 0.05, bell: 0.28 },
   },
 };
 
@@ -309,15 +309,15 @@ const nostalgic: MoodPreset = {
     ampDecay: 0.28, sustain: 0.6, release: 0.16, glide: 0.04, sawDb: -3.5, subDb: -7, drive: 0.2, levelDb: 0,
   },
   lead: {
-    wave0: 'sawtooth', unison0: 2, wave1: 'sawtooth', sawDb: -3, squareDb: -6, harmonicity: 1.004, cutoffMin: 500, cutoffMax: 4500, filterDefault: 0.55, q: 1.4,
-    filterOctaves: 1.8, filterDecay: 0.4, attack: 0.07, decay: 0.35, sustain: 0.75, release: 1.3, portamento: 0.06,
-    vibratoAmount: 0.15, vibratoRate: 4.8, vibratoDelay: 0.7, vibratoFade: 1.6, chorusWet: 0.45, levelDb: 0,
+    wave0: 'sawtooth', unison0: 2, wave1: 'triangle', sawDb: -3, squareDb: -9, harmonicity: 1.002, cutoffMin: 500, cutoffMax: 4000, filterDefault: 0.48, q: 1.15,
+    filterOctaves: 1.4, filterDecay: 0.48, attack: 0.1, decay: 0.38, sustain: 0.76, release: 1.5, portamento: 0.05,
+    vibratoAmount: 0.12, vibratoRate: 4.5, vibratoDelay: 0.85, vibratoFade: 1.8, chorusWet: 0.34, levelDb: -1,
   },
   drums: {
-    kickHz: 52, kickPitchOct: 2.2, kickPitchDecay: 0.03, kickDecay: 0.28, kickDb: -5,
-    snareBodyHz: 200, snareNoiseDecay: 0.15, snareDb: -13, snareTailDb: -15, snareTailGate: 0.26,
-    clapDb: -15, hatDb: -22, hatDecay: 0.05, hatHpHz: 7500, openHatDb: -24, openHatDecay: 0.3,
-    tomDb: -11, crashDb: -25, ceilingHz: 14000, levelDb: 7,
+    kickHz: 52, kickPitchOct: 2.0, kickPitchDecay: 0.038, kickDecay: 0.32, kickDb: -6,
+    snareBodyHz: 195, snareNoiseDecay: 0.17, snareDb: -14, snareTailDb: -22, snareTailGate: 0.2,
+    clapDb: -16, hatDb: -24, hatDecay: 0.055, hatHpHz: 6000, openHatDb: -26, openHatDecay: 0.32,
+    tomDb: -12, crashDb: -27, ceilingHz: 9000, levelDb: 5,
   },
   texture: {
     pinkDb: -4, brownDb: -10, noiseCutoffMin: 600, noiseCutoffMax: 8000, noiseFilterDefault: 0.5,
@@ -329,8 +329,8 @@ const nostalgic: MoodPreset = {
   fx: {
     reverbReturnDb: -5, reverbLpHz: 7000, reverbHpHz: 200, delayBeats: 0.75, delayFeedback: 0.4, delayLpHz: 3200,
     delayReturnDb: -3, delayToReverb: 0.3,
-    reverbSend: { pad: 0.35, arp: 0.3, bass: 0.03, lead: 0.4, drums: 0.3, texture: 0.3, bell: 0.48 },
-    delaySend: { pad: 0.08, arp: 0.45, bass: 0, lead: 0.45, drums: 0.05, texture: 0.05, bell: 0.3 },
+    reverbSend: { pad: 0.35, arp: 0.3, bass: 0.03, lead: 0.38, drums: 0.32, texture: 0.3, bell: 0.48 },
+    delaySend: { pad: 0.08, arp: 0.45, bass: 0, lead: 0.36, drums: 0.05, texture: 0.05, bell: 0.3 },
   },
 };
 
@@ -350,15 +350,15 @@ const space: MoodPreset = {
     ampDecay: 0.45, sustain: 0.7, release: 0.35, glide: 0.08, sawDb: -5, subDb: -4, drive: 0.05, levelDb: -1,
   },
   lead: {
-    wave0: 'sawtooth', unison0: 2, wave1: 'sawtooth', sawDb: -4, squareDb: -7, harmonicity: 1.005, cutoffMin: 450, cutoffMax: 4500, filterDefault: 0.5, q: 1.0,
-    filterOctaves: 1.4, filterDecay: 0.8, attack: 0.18, decay: 0.6, sustain: 0.8, release: 2.4, portamento: 0.12,
-    vibratoAmount: 0.2, vibratoRate: 4.2, vibratoDelay: 0.9, vibratoFade: 2.0, chorusWet: 0.55, levelDb: 0,
+    wave0: 'sawtooth', unison0: 2, wave1: 'triangle', sawDb: -4, squareDb: -10, harmonicity: 1.002, cutoffMin: 450, cutoffMax: 3800, filterDefault: 0.44, q: 0.85,
+    filterOctaves: 1.2, filterDecay: 0.75, attack: 0.22, decay: 0.62, sustain: 0.82, release: 2.6, portamento: 0.1,
+    vibratoAmount: 0.16, vibratoRate: 4.0, vibratoDelay: 1.0, vibratoFade: 2.2, chorusWet: 0.42, levelDb: -1,
   },
   drums: {
-    kickHz: 48, kickPitchOct: 1.8, kickPitchDecay: 0.04, kickDecay: 0.34, kickDb: -10,
-    snareBodyHz: 180, snareNoiseDecay: 0.14, snareDb: -18, snareTailDb: -26, snareTailGate: 0.2,
-    clapDb: -20, hatDb: -30, hatDecay: 0.04, hatHpHz: 7000, openHatDb: -32, openHatDecay: 0.3,
-    tomDb: -16, crashDb: -30, ceilingHz: 8000, levelDb: 5,
+    kickHz: 48, kickPitchOct: 1.7, kickPitchDecay: 0.045, kickDecay: 0.38, kickDb: -11,
+    snareBodyHz: 175, snareNoiseDecay: 0.16, snareDb: -19, snareTailDb: -30, snareTailGate: 0.15,
+    clapDb: -21, hatDb: -32, hatDecay: 0.048, hatHpHz: 5500, openHatDb: -34, openHatDecay: 0.32,
+    tomDb: -17, crashDb: -32, ceilingHz: 7200, levelDb: 4,
   },
   texture: {
     pinkDb: -6, brownDb: -5, noiseCutoffMin: 200, noiseCutoffMax: 5000, noiseFilterDefault: 0.5,
@@ -370,8 +370,8 @@ const space: MoodPreset = {
   fx: {
     reverbReturnDb: -1, reverbLpHz: 8000, reverbHpHz: 150, delayBeats: 1.5, delayFeedback: 0.45, delayLpHz: 3000,
     delayReturnDb: -3, delayToReverb: 0.5,
-    reverbSend: { pad: 0.8, arp: 0.6, bass: 0.07, lead: 0.7, drums: 0.15, texture: 0.7, bell: 0.7 },
-    delaySend: { pad: 0.2, arp: 0.5, bass: 0, lead: 0.6, drums: 0.02, texture: 0.3, bell: 0.4 },
+    reverbSend: { pad: 0.8, arp: 0.6, bass: 0.07, lead: 0.58, drums: 0.22, texture: 0.7, bell: 0.7 },
+    delaySend: { pad: 0.2, arp: 0.5, bass: 0, lead: 0.48, drums: 0.03, texture: 0.3, bell: 0.4 },
   },
 };
 

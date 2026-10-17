@@ -45,8 +45,8 @@ export function renderDrums(ctx: LayerContext): NoteEvent[] {
     if (tier === 0) continue;
     const rng = stream(ctx.seed, 'drums', 'bar', plan.index, rel);
     const cx = params.complexity;
-    const dyn = 0.72 + 0.4 * e;
-    const soft = style === 'soft' || style === 'minimal' ? 0.85 : 1;
+    const dyn = 0.62 + 0.32 * e;
+    const soft = style === 'soft' || style === 'minimal' ? 0.82 : 0.92;
     const hits: Hit[] = [];
     const add = (step: number, pitch: number, vel: number, dur: number): void => {
       hits.push({ step, pitch, vel: clamp(vel * dyn * soft + jitter(rng, 0.035), 0.04, 1), dur });
@@ -94,17 +94,17 @@ export function renderDrums(ctx: LayerContext): NoteEvent[] {
 
     // ---- snare / clap
     if (tier === 2) {
-      add(8, DRUM.snare, 0.7, 0.2);
-      if (style !== 'soft') add(8, DRUM.clap, 0.5, 0.2);
+      add(8, DRUM.snare, 0.62, 0.2);
+      if (style !== 'soft' && chance(rng, 0.35)) add(8, DRUM.clap, 0.38, 0.2);
     } else if (tier === 3) {
       if (style === 'halftime') {
-        add(8, DRUM.snare, 0.78, 0.2);
-        add(8, DRUM.clap, 0.55, 0.2);
+        add(8, DRUM.snare, 0.68, 0.2);
+        if (chance(rng, 0.45)) add(8, DRUM.clap, 0.42, 0.2);
       } else {
         for (const s of [4, 12]) {
           if (s < fillStart) {
-            add(s, DRUM.snare, 0.74, 0.2);
-            add(s, DRUM.clap, 0.5, 0.2);
+            add(s, DRUM.snare, 0.66, 0.2);
+            if (s === 12 && chance(rng, 0.5)) add(s, DRUM.clap, 0.38, 0.2);
           }
         }
       }
@@ -137,7 +137,7 @@ export function renderDrums(ctx: LayerContext): NoteEvent[] {
     // ---- crash after a fill / at a section arrival
     const arrival = rel === 0 && plan.entry === 'sweep';
     if (tier >= 2 && ((rel > 0 && rel % 8 === 0 && chance(rng, 0.5)) || (arrival && chance(rng, 0.85)))) {
-      add(0, DRUM.crash, 0.46, 2);
+      add(0, DRUM.crash, 0.34, 2);
     }
 
     for (const h of hits) {

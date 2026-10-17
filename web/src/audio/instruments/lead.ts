@@ -22,6 +22,8 @@ export class LeadInstrument implements Instrument {
 
   private readonly synth: Tone.DuoSynth;
   private readonly chorus: Tone.Chorus;
+  /** Post-chorus LP — keeps the DuoSynth from sitting on top of the pad like a GM lead. */
+  private readonly warmth: Tone.Filter;
   private readonly alloc = new VoiceAllocator(1);
 
   private mood: MoodId;
@@ -54,13 +56,13 @@ export class LeadInstrument implements Instrument {
       envelope: { attack: p.attack, decay: p.decay, sustain: p.sustain, release: p.release },
       filter: { type: 'lowpass' as const, Q: p.q, rolloff: -24 as const },
       filterEnvelope: {
-        attack: 0.02,
+        attack: 0.06,
         decay: p.filterDecay,
-        sustain: 0.4,
-        release: 0.6,
+        sustain: 0.22,
+        release: 0.85,
         baseFrequency: REF_HZ,
         octaves: p.filterOctaves,
-        exponent: 2,
+        exponent: 1.6,
       },
     });
     this.synth = new Tone.DuoSynth({
@@ -77,9 +79,15 @@ export class LeadInstrument implements Instrument {
     this.synth.voice0.filter.detune.value = cents;
     this.synth.voice1.filter.detune.value = cents;
 
-    this.chorus = new Tone.Chorus({ frequency: 0.5, delayTime: 3.5, depth: 0.5, wet: p.chorusWet, spread: 150 }).start();
+    this.chorus = new Tone.Chorus({ frequency: 0.45, delayTime: 4.2, depth: 0.35, wet: p.chorusWet, spread: 120 }).start();
+    this.warmth = new Tone.Filter({
+      type: 'lowpass',
+      frequency: logMap(p.filterDefault, p.cutoffMin, Math.min(p.cutoffMax, 6200)),
+      Q: 0.6,
+      rolloff: -12,
+    });
     this.output = new Tone.Gain(dbToGain(p.levelDb));
-    this.synth.chain(this.chorus, this.output);
+    this.synth.chain(this.chorus, this.warmth, this.output);
   }
 
   private trim0For(wave: Wave, count: number): number {
@@ -136,7 +144,7 @@ export class LeadInstrument implements Instrument {
       v.envelope.sustain = p.sustain;
       v.envelope.release = p.release;
       v.filterEnvelope.decay = p.filterDecay;
-      v.filterEnvelope.octaves = p.filterOctaves * (0.5 + 0.5 * vel);
+      v.filterEnvelope.octaves = p.filterOctaves * (0.35 + 0.45 * vel);
     }
     s.portamento = p.portamento;
     // vibrato fades in on sustained notes (restarted at each note)
@@ -145,7 +153,7 @@ export class LeadInstrument implements Instrument {
     amt.setValueAtTime(0, time);
     amt.setValueAtTime(0, time + p.vibratoDelay);
     amt.linearRampToValueAtTime(p.vibratoAmount, time + p.vibratoDelay + p.vibratoFade);
-    s.triggerAttackRelease(midiToHz(midi), dur, time, 0.3 + 0.7 * vel);
+    s.triggerAttackRelease(midiToHz(midi), dur, time, 0.18 + 0.52 * vel);
     this.alloc.claim(0, time + dur + p.release);
   }
 
@@ -212,6 +220,7 @@ export class LeadInstrument implements Instrument {
     rampParam(s.harmonicity, p.harmonicity, now, rampSeconds);
     rampParam(s.vibratoRate, p.vibratoRate, now, rampSeconds);
     rampParam(this.chorus.wet, p.chorusWet, now, rampSeconds);
+    rampParam(this.warmth.frequency, logMap(p.filterDefault, p.cutoffMin, Math.min(p.cutoffMax, 6200)), now, rampSeconds);
     rampParam(this.output.gain, dbToGain(p.levelDb), now, rampSeconds);
   }
 
@@ -229,6 +238,7 @@ export class LeadInstrument implements Instrument {
   dispose(): void {
     this.synth.dispose();
     this.chorus.dispose();
+    this.warmth.dispose();
     this.output.dispose();
   }
 }

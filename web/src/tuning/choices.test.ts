@@ -97,14 +97,14 @@ describe('wave choice defaults', () => {
     });
   }
 
-  it('the default options reproduce the current sounds (saw stacks, saw+saw lead, saw+sine bass, per-mood pad/drone)', () => {
+  it('the default options reproduce the current sounds (saw stacks, saw+triangle lead, saw+sine bass, per-mood pad/drone)', () => {
     for (const mood of MOOD_IDS) {
       const p = PRESETS[mood];
       expect(p.arp.wave).toBe('sawtooth');
       expect(p.arp.unison).toBe(3);
       expect(p.lead.wave0).toBe('sawtooth');
       expect(p.lead.unison0).toBe(2);
-      expect(p.lead.wave1).toBe('sawtooth');
+      expect(p.lead.wave1).toBe('triangle');
       expect(p.pad.unison).toBe(3);
       expect(p.bass.wave).toBe('sawtooth');
       expect(p.bass.subWave).toBe('sine');

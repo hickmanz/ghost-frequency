@@ -121,10 +121,10 @@ function buildPhrase(ctx: LayerContext, block: number, off: number): NoteEvent[]
     // stay inside the scale unless it is a tone of the sounding chord
     if (!seg.chord.pcs.includes(mod12(midi))) midi = snapToScale(plan.key, midi);
     const e = energyAt(ctx, plan.startBar + noteRel);
-    let vel = 0.46 + 0.14 * e + jitter(rng, 0.02);
-    if (n.strong) vel += 0.04;
-    if (n.dur <= 0.5) vel -= 0.07;
-    result.push(note('lead', startBeat + n.t, n.dur * 0.94, midi, vel));
+    let vel = 0.38 + 0.12 * e + jitter(rng, 0.02);
+    if (n.strong) vel += 0.03;
+    if (n.dur <= 0.5) vel -= 0.04;
+    result.push(note('lead', startBeat + n.t, n.dur * 1.02, midi, vel));
     count++;
   }
   return store();
