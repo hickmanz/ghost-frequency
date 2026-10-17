@@ -247,8 +247,8 @@ const dreamy: MoodPreset = {
   fx: {
     reverbReturnDb: -3, reverbLpHz: 9000, reverbHpHz: 180, delayBeats: 0.75, delayFeedback: 0.42, delayLpHz: 3800,
     delayReturnDb: -3, delayToReverb: 0.35,
-    reverbSend: { pad: 0.55, arp: 0.5, bass: 0.05, lead: 0.6, drums: 0.22, texture: 0.5 },
-    delaySend: { pad: 0.1, arp: 0.5, bass: 0, lead: 0.5, drums: 0.06, texture: 0.1 },
+    reverbSend: { pad: 0.55, arp: 0.5, bass: 0.05, lead: 0.6, drums: 0.22, texture: 0.5, bell: 0.62 },
+    delaySend: { pad: 0.1, arp: 0.5, bass: 0, lead: 0.5, drums: 0.06, texture: 0.1, bell: 0.35 },
   },
 };
 
@@ -288,8 +288,8 @@ const dark: MoodPreset = {
   fx: {
     reverbReturnDb: -5, reverbLpHz: 4800, reverbHpHz: 160, delayBeats: 1.0, delayFeedback: 0.38, delayLpHz: 2400,
     delayReturnDb: -5, delayToReverb: 0.3,
-    reverbSend: { pad: 0.4, arp: 0.3, bass: 0.03, lead: 0.45, drums: 0.18, texture: 0.4 },
-    delaySend: { pad: 0.05, arp: 0.3, bass: 0, lead: 0.35, drums: 0.04, texture: 0.05 },
+    reverbSend: { pad: 0.4, arp: 0.3, bass: 0.03, lead: 0.45, drums: 0.18, texture: 0.4, bell: 0.5 },
+    delaySend: { pad: 0.05, arp: 0.3, bass: 0, lead: 0.35, drums: 0.04, texture: 0.05, bell: 0.28 },
   },
 };
 
@@ -329,8 +329,8 @@ const nostalgic: MoodPreset = {
   fx: {
     reverbReturnDb: -5, reverbLpHz: 7000, reverbHpHz: 200, delayBeats: 0.75, delayFeedback: 0.4, delayLpHz: 3200,
     delayReturnDb: -3, delayToReverb: 0.3,
-    reverbSend: { pad: 0.35, arp: 0.3, bass: 0.03, lead: 0.4, drums: 0.3, texture: 0.3 },
-    delaySend: { pad: 0.08, arp: 0.45, bass: 0, lead: 0.45, drums: 0.05, texture: 0.05 },
+    reverbSend: { pad: 0.35, arp: 0.3, bass: 0.03, lead: 0.4, drums: 0.3, texture: 0.3, bell: 0.48 },
+    delaySend: { pad: 0.08, arp: 0.45, bass: 0, lead: 0.45, drums: 0.05, texture: 0.05, bell: 0.3 },
   },
 };
 
@@ -370,8 +370,8 @@ const space: MoodPreset = {
   fx: {
     reverbReturnDb: -1, reverbLpHz: 8000, reverbHpHz: 150, delayBeats: 1.5, delayFeedback: 0.45, delayLpHz: 3000,
     delayReturnDb: -3, delayToReverb: 0.5,
-    reverbSend: { pad: 0.8, arp: 0.6, bass: 0.07, lead: 0.7, drums: 0.15, texture: 0.7 },
-    delaySend: { pad: 0.2, arp: 0.5, bass: 0, lead: 0.6, drums: 0.02, texture: 0.3 },
+    reverbSend: { pad: 0.8, arp: 0.6, bass: 0.07, lead: 0.7, drums: 0.15, texture: 0.7, bell: 0.7 },
+    delaySend: { pad: 0.2, arp: 0.5, bass: 0, lead: 0.6, drums: 0.02, texture: 0.3, bell: 0.4 },
   },
 };
 

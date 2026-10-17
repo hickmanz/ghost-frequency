@@ -230,9 +230,11 @@ export type ParsedTarget =
   | { kind: 'sendDelay' }
   | { kind: 'textureNoise' }
   | { kind: 'masterFilter' }
+  | { kind: 'param'; key: string; layer: LayerId }
+  | { kind: 'duck'; layer: LayerId }
   | { kind: 'unknown' };
 
-const LAYERS: readonly string[] = ['pad', 'arp', 'bass', 'lead', 'drums', 'texture'];
+const LAYERS: readonly string[] = ['pad', 'arp', 'bass', 'lead', 'drums', 'texture', 'bell'];
 
 export function parseTarget(target: AutomationTarget | string): ParsedTarget {
   switch (target) {
@@ -253,6 +255,13 @@ export function parseTarget(target: AutomationTarget | string): ParsedTarget {
   } else if (target.startsWith('layer.gain.')) {
     const l = target.slice(11);
     if (LAYERS.includes(l)) return { kind: 'layerGain', layer: l as LayerId };
+  } else if (target.startsWith('duck.')) {
+    const l = target.slice(5);
+    if (l === 'pad' || l === 'texture') return { kind: 'duck', layer: l };
+  } else if (target.startsWith('param.')) {
+    const key = target.slice(6);
+    const l = key.split('.')[0] ?? '';
+    if (LAYERS.includes(l)) return { kind: 'param', key, layer: l as LayerId };
   }
   return { kind: 'unknown' };
 }

@@ -267,6 +267,18 @@ export class ToneRenderer implements AudioRenderer {
     return this.graph ? Tone.getContext().sampleRate : 44100;
   }
 
+  getComposerLiveParam(key: string): number | undefined {
+    return this.graph?.composerLive.getParam(key);
+  }
+
+  getComposerFilterOpenness(layer: LayerId): number | undefined {
+    return this.graph?.composerLive.getFilter(layer);
+  }
+
+  getComposerLiveVersion(): number {
+    return this.graph?.composerLive.getVersion() ?? 0;
+  }
+
   // ---------------------------------------------------------------------------------------------
   // visualizer
   // ---------------------------------------------------------------------------------------------
@@ -322,7 +334,7 @@ export class ToneRenderer implements AudioRenderer {
 
 const EMPTY_SPECTRUM = new Float32Array(512).fill(-140);
 const EMPTY_WAVE = new Float32Array(0);
-const ZERO_LEVELS: Record<LayerId, number> = { pad: 0, arp: 0, bass: 0, lead: 0, drums: 0, texture: 0 };
+const ZERO_LEVELS: Record<LayerId, number> = { pad: 0, arp: 0, bass: 0, lead: 0, drums: 0, texture: 0, bell: 0 };
 
 export function createRenderer(): AudioRenderer {
   return new ToneRenderer();

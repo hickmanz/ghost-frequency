@@ -32,6 +32,7 @@ export const DEFAULT_MIXER: MixerParams = {
   lead: 0.5,
   drums: 0.5,
   texture: 0.45,
+  bell: 0.32,
   master: 0.8,
 };
 

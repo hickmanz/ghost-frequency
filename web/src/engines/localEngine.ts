@@ -12,7 +12,7 @@ import type {
 } from '@shared/index';
 import { MOOD_IDS, SCHEMA_VERSION } from '@shared/index';
 import { renderAutomation } from '../composition/automation';
-import { Form, LOCK_BARS } from '../composition/form';
+import { Form, LOCK_BARS, PLAN_KEEP_BARS } from '../composition/form';
 import { BEATS_PER_BAR, energyAt, type LayerContext } from '../composition/layers/context';
 import { renderArp } from '../composition/layers/arp';
 import { renderBass } from '../composition/layers/bass';
@@ -108,6 +108,8 @@ export class LocalEngine implements ComposerEngine {
       }
     }
 
+    if (endBar > PLAN_KEEP_BARS) form.pruneBehind(endBar);
+
     return {
       version: SCHEMA_VERSION,
       startBeat,
@@ -116,6 +118,12 @@ export class LocalEngine implements ComposerEngine {
       timeSig: [4, 4],
       events: ordered,
     };
+  }
+
+  dispose(): void {
+    this.form = null;
+    this.cache.clear();
+    this.lastNote.clear();
   }
 
   // ------------------------------------------------------------------------------------------

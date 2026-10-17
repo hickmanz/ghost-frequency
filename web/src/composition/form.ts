@@ -41,6 +41,8 @@ import { buildChord, clamp01, keysEqual } from './theory';
 
 /** Bars before a section's end at which the next section gets planned (and the current plan is "locked"). */
 export const LOCK_BARS = 4;
+/** Section plans fully behind playback are dropped (keeps `prev()` / joins valid for recent boundaries). */
+export const PLAN_KEEP_BARS = 128;
 
 const NEXT_SECTION: Record<SectionName, ReadonlyArray<readonly [SectionName, number]>> = {
   Intro: [['Drift', 8], ['Build', 2]],
@@ -177,12 +179,17 @@ export class Form {
     return this.plans[this.plans.length - 1]!;
   }
 
+  private planByIndex(index: number): SectionPlan | undefined {
+    if (index < 0) return undefined;
+    return this.plans.find((p) => p.index === index);
+  }
+
   next(plan: SectionPlan): SectionPlan | undefined {
-    return this.plans[plan.index + 1];
+    return this.planByIndex(plan.index + 1);
   }
 
   prev(plan: SectionPlan): SectionPlan | undefined {
-    return this.plans[plan.index - 1];
+    return this.planByIndex(plan.index - 1);
   }
 
   /** Section containing `bar`, planning forward as needed. */
@@ -195,8 +202,21 @@ export class Form {
 
   /** Ensure the section after `plan` exists. */
   ensureNext(plan: SectionPlan, params: GenerationParams): SectionPlan {
-    while (this.plans.length <= plan.index + 1) this.planNext(params);
-    return this.plans[plan.index + 1]!;
+    let n = this.next(plan);
+    while (!n) {
+      this.planNext(params);
+      n = this.next(plan);
+    }
+    return n;
+  }
+
+  /**
+   * Drop completed section plans that ended far behind `renderedThroughBar`.
+   * Plans are kept by global `index` (RNG / motifs); only the in-memory list shrinks.
+   */
+  pruneBehind(renderedThroughBar: number, keepBars = PLAN_KEEP_BARS): void {
+    const cutoff = renderedThroughBar - keepBars;
+    while (this.plans.length > 2 && planEnd(this.plans[0]!) <= cutoff) this.plans.shift();
   }
 
   /**

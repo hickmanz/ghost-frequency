@@ -72,5 +72,10 @@ export interface AudioRenderer {
   /** Peak level 0..1 of master output (post-limiter) */
   getLevel(): number;
 
+  /** Sound Lab: last composer-applied tuning value (native units). */
+  getComposerLiveParam(key: string): number | undefined;
+  getComposerFilterOpenness(layer: LayerId): number | undefined;
+  getComposerLiveVersion(): number;
+
   dispose(): void;
 }

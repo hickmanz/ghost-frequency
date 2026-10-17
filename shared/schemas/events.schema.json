@@ -40,7 +40,7 @@
     },
     "LayerId": {
       "type": "string",
-      "enum": ["pad", "arp", "bass", "lead", "drums", "texture"]
+      "enum": ["pad", "arp", "bass", "lead", "drums", "texture", "bell"]
     },
     "NoteEvent": {
       "type": "object",
@@ -56,23 +56,35 @@
       "additionalProperties": false
     },
     "AutomationTarget": {
-      "type": "string",
-      "enum": [
-        "filter.pad",
-        "filter.arp",
-        "filter.bass",
-        "filter.lead",
-        "filter.texture",
-        "send.reverb",
-        "send.delay",
-        "texture.noise",
-        "master.filter",
-        "layer.gain.pad",
-        "layer.gain.arp",
-        "layer.gain.bass",
-        "layer.gain.lead",
-        "layer.gain.drums",
-        "layer.gain.texture"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "filter.pad",
+            "filter.arp",
+            "filter.bass",
+            "filter.lead",
+            "filter.texture",
+            "send.reverb",
+            "send.delay",
+            "texture.noise",
+            "master.filter",
+            "layer.gain.pad",
+            "layer.gain.arp",
+            "layer.gain.bass",
+            "layer.gain.lead",
+            "layer.gain.drums",
+            "layer.gain.texture",
+            "layer.gain.bell",
+            "filter.bell",
+            "duck.pad",
+            "duck.texture"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^param\\.[a-z]+\\."
+        }
       ]
     },
     "AutomationEvent": {

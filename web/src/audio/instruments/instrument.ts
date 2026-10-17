@@ -16,6 +16,8 @@ export interface Instrument {
   trigger(midi: number, durSeconds: number, time: number, vel: number): void;
   /** Normalized automation (0..1) of an instrument parameter; ramp in seconds (0 = (nearly) immediate). */
   automate(param: InstrumentParam, value01: number, time: number, rampSeconds?: number): void;
+  /** Composer / Auteur: dotted preset key (e.g. pad.attack), value 0..1 mapped via Sound Lab ranges. Optional. */
+  automateParam?(presetKey: string, value01: number, time: number, rampSeconds?: number): void;
   /** Ramp every tweakable parameter to the mood's preset over `rampSeconds`. Never rebuilds nodes.
    *  `resetAutomation` = forget automated filter/noise positions and go back to the preset defaults. */
   setPreset(mood: MoodId, rampSeconds: number, resetAutomation?: boolean): void;

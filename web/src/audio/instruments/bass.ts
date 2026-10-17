@@ -3,6 +3,7 @@ import type { MoodId } from '@shared/index';
 import { FAST_RELEASE, centsBetween, rampParam, VoiceAllocator, type Instrument, type InstrumentParam } from './instrument';
 import { dbToGain, logMap, midiToHz, saturationCurve } from '../mapping';
 import { oscTrimDb } from '../oscTrim';
+import { denorm, waveFromChoiceValue } from './paramApply';
 import { getBuiltinPreset, getPreset, type BassPreset, type Wave } from '../presets';
 
 const REF_HZ = 120;
@@ -144,6 +145,38 @@ export class BassInstrument implements Instrument {
     this.filterPos = value01;
     const c = centsBetween(REF_HZ, logMap(value01, this.preset.cutoffMin, this.preset.cutoffMax));
     rampParam(this.saw.filter.detune, c, time, rampSeconds);
+  }
+
+  automateParam(presetKey: string, value01: number, time: number, rampSeconds = 0): void {
+    if (!presetKey.startsWith('bass.')) return;
+    const field = presetKey.slice(5);
+    const native = denorm(presetKey, value01);
+    if (native === null) return;
+    const p = this.preset;
+    switch (field) {
+      case 'wave': {
+        const w = waveFromChoiceValue(native);
+        this.preset = { ...p, wave: w };
+        if (this.alloc.isFree(0, time)) this.syncOsc();
+        break;
+      }
+      case 'ampDecay':
+        this.preset = { ...p, ampDecay: native };
+        this.saw.envelope.decay = native;
+        break;
+      case 'drive':
+        this.preset = { ...p, drive: native };
+        rampParam(this.dry.gain, 1 - native, time, rampSeconds);
+        rampParam(this.wet.gain, native, time, rampSeconds);
+        break;
+      case 'glide':
+        this.preset = { ...p, glide: native };
+        this.saw.portamento = native;
+        this.sub.portamento = native;
+        break;
+      default:
+        break;
+    }
   }
 
   setPreset(mood: MoodId, rampSeconds: number, resetAutomation = false): void {

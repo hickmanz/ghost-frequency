@@ -66,7 +66,10 @@ function pickMotif(ctx: LayerContext, rng: { next(): number }, secondaryChance: 
 function buildPhrase(ctx: LayerContext, block: number, off: number): NoteEvent[] {
   const { plan, params } = ctx;
   const startRel = block * 8 + off;
-  const cacheKey = `lead:${plan.index}:${block}:${off}`;
+  const devKey = ctx.develop
+    ? `:${plan.progression.chords.map((c) => c.label).join('.')}:${plan.lengthBars}:${plan.pivot?.bars ?? 0}`
+    : '';
+  const cacheKey = `lead:${plan.index}:${block}:${off}${devKey}`;
   const cached = ctx.cache.get(cacheKey) as NoteEvent[] | undefined;
   if (cached) return cached;
 

@@ -8,6 +8,7 @@ import {
   type MoodId,
 } from '@shared/index';
 import type { TuningOverrides } from '../tuning/schema';
+import { listBrowserEngines } from '../engines/registry';
 
 export type BackendStatus = 'disabled' | 'disconnected' | 'connecting' | 'connected' | 'error';
 export type BackendActiveSource = 'remote' | 'local';
@@ -87,7 +88,7 @@ export const useStore = create<AppState>((set) => ({
     url: 'http://localhost:8000',
     token: '',
     status: 'disabled',
-    engines: [{ id: 'local-js', name: 'Built-in (JavaScript)' }],
+    engines: listBrowserEngines(),
     engineId: 'local-js',
   },
 

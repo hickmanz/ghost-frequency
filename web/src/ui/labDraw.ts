@@ -560,8 +560,8 @@ export function drawFilters(ctx: CanvasRenderingContext2D, w: number, h: number,
       ctx.globalAlpha = 1;
     }
 
-    // open (max) response with soft fill
-    const open = spec.cutMax;
+    const liveFc = spec.liveCutHz;
+    const open = liveFc !== undefined && liveFc > 0 ? liveFc : spec.cutMax;
     curve(spec, open);
     const y0 = dy(0);
     ctx.lineTo(F_PAD.l + pw, y0);
@@ -584,13 +584,23 @@ export function drawFilters(ctx: CanvasRenderingContext2D, w: number, h: number,
     ctx.lineWidth = hot ? 2.8 : 1.8;
     ctx.stroke();
 
-    // cutoff marker + label
+    // cutoff marker + label (live composer position when set)
     const cx = fx(open);
     const peakDb = Math.max(0, spec.type === 'lp' ? lowpassDb(open, open, spec.q) : highpassDb(open, open, spec.q));
     ctx.beginPath();
-    ctx.arc(cx, dy(peakDb), mine === 'q' ? 4.2 : 2.8, 0, Math.PI * 2);
-    ctx.fillStyle = mine === 'q' ? COLOR.magenta : '#fff';
+    ctx.arc(cx, dy(peakDb), liveFc !== undefined ? 4.5 : mine === 'q' ? 4.2 : 2.8, 0, Math.PI * 2);
+    ctx.fillStyle = liveFc !== undefined ? COLOR.violet : mine === 'q' ? COLOR.magenta : '#fff';
     ctx.fill();
+    if (liveFc !== undefined && band && Math.abs(open - spec.cutMax) > spec.cutMax * 0.02) {
+      curve(spec, spec.cutMax);
+      ctx.setLineDash([2, 4]);
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
     ctx.fillStyle = color;
     if (specs.length === 1) {
       const txt = `${formatHzShort(open)}Hz`;

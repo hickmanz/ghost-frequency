@@ -4,7 +4,7 @@ import { faderToGain, layerAutomationGain } from './mapping';
 import { rampParam, type Instrument } from './instruments/instrument';
 
 /** Static pan per layer (instruments are already stereo; keep the centre-heavy layers centred). */
-const LAYER_PAN: Record<LayerId, number> = { pad: 0, arp: 0, bass: 0, lead: 0.06, drums: 0, texture: 0 };
+const LAYER_PAN: Record<LayerId, number> = { pad: 0, arp: 0, bass: 0, lead: 0.06, drums: 0, texture: 0, bell: 0.15 };
 
 /**
  * One channel strip per layer:
@@ -22,6 +22,8 @@ export class ChannelStrip {
   readonly panner: Tone.Panner;
   readonly reverbSend: Tone.Gain;
   readonly delaySend: Tone.Gain;
+  /** Kick duck for pad/texture. Stays at unity unless a composer emits duck.* events. */
+  readonly duck: Tone.Gain;
 
   private faderValue = 0.7;
   constructor(readonly layer: LayerId, instrument: Instrument, dryOut: Tone.ToneAudioNode, reverbIn: Tone.ToneAudioNode, delayIn: Tone.ToneAudioNode) {
@@ -32,8 +34,9 @@ export class ChannelStrip {
     this.panner = new Tone.Panner(LAYER_PAN[layer]);
     this.reverbSend = new Tone.Gain(0);
     this.delaySend = new Tone.Gain(0);
+    this.duck = new Tone.Gain(1);
 
-    instrument.output.chain(this.auto, this.gate, this.monitor, this.fader, this.panner, dryOut);
+    instrument.output.chain(this.auto, this.duck, this.gate, this.monitor, this.fader, this.panner, dryOut);
     this.panner.connect(this.reverbSend);
     this.reverbSend.connect(reverbIn);
     this.panner.connect(this.delaySend);
@@ -59,6 +62,12 @@ export class ChannelStrip {
     rampParam(this.auto.gain, layerAutomationGain(value01), time, rampSeconds);
   }
 
+  /** 'duck.pad' / 'duck.texture': linear gain, independent of the section fade. */
+  setDuck(value01: number, time: number, rampSeconds: number): void {
+    const g = value01 < 0 ? 0 : value01 > 1 ? 1 : value01;
+    rampParam(this.duck.gain, g, time, rampSeconds);
+  }
+
   setGate(open: boolean, time: number, rampSeconds: number): void {
     rampParam(this.gate.gain, open ? 1 : 0, time, rampSeconds);
   }
@@ -73,9 +82,11 @@ export class ChannelStrip {
   resetAutomation(time: number): void {
     this.auto.gain.cancelScheduledValues(time);
     this.auto.gain.setValueAtTime(1, time);
+    this.duck.gain.cancelScheduledValues(time);
+    this.duck.gain.setValueAtTime(1, time);
   }
 
   dispose(): void {
-    for (const n of [this.auto, this.gate, this.monitor, this.fader, this.panner, this.reverbSend, this.delaySend]) n.dispose();
+    for (const n of [this.auto, this.duck, this.gate, this.monitor, this.fader, this.panner, this.reverbSend, this.delaySend]) n.dispose();
   }
 }

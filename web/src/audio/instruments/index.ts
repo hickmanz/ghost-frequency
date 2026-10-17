@@ -1,6 +1,7 @@
 import type { LayerId, MoodId } from '@shared/index';
 import { ArpInstrument } from './arp';
 import { BassInstrument } from './bass';
+import { BellInstrument } from './bell';
 import { DrumsInstrument } from './drums';
 import type { Instrument } from './instrument';
 import { LeadInstrument } from './lead';
@@ -17,6 +18,7 @@ export interface InstrumentSet {
   lead: LeadInstrument;
   drums: DrumsInstrument;
   texture: TextureInstrument;
+  bell: BellInstrument;
 }
 
 export function createInstruments(mood: MoodId): InstrumentSet {
@@ -27,10 +29,11 @@ export function createInstruments(mood: MoodId): InstrumentSet {
     lead: new LeadInstrument(mood),
     drums: new DrumsInstrument(mood),
     texture: new TextureInstrument(mood),
+    bell: new BellInstrument(mood),
   };
 }
 
-export const LAYER_ORDER: readonly LayerId[] = ['pad', 'arp', 'bass', 'lead', 'drums', 'texture'];
+export const LAYER_ORDER: readonly LayerId[] = ['pad', 'arp', 'bass', 'lead', 'bell', 'drums', 'texture'];
 export function allInstruments(set: InstrumentSet): Instrument[] {
   return LAYER_ORDER.map((l) => set[l]);
 }

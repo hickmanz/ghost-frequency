@@ -32,7 +32,15 @@ function splitFor(ctx: LayerContext, k: number, seg: PlanSegment, voices: number
   const { complexity, variation } = ctx.params;
   const p = 0.5 * complexity * (0.35 + 0.65 * variation);
   const rng = stream(ctx.seed, 'pad', 'split', ctx.plan.index, k);
-  if (rng.next() >= p) return null;
+  // Developed mid-passes always try a top-voice move. Full never sets `develop`, so this
+  // draw stays in the same place and the same stream position as before.
+  const dev = ctx.develop;
+  const pass =
+    dev && dev.sourceLoop > 0
+      ? Math.min(dev.passCount - 1, Math.floor(Math.max(0, seg.startBar) / dev.sourceLoop))
+      : null;
+  const forced = pass !== null && dev!.passCount >= 3 && pass > 0 && pass < dev!.passCount - 1;
+  if (!forced && rng.next() >= p) return null;
   const top = voices[voices.length - 1]!;
   const splitBar = seg.bars >= 4 ? 2 : 1;
   let best: number | null = null;

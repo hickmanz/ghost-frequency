@@ -7,8 +7,9 @@ import { PresetsPanel } from './PresetsPanel';
 import { SoundLab, SoundLabButton } from './SoundLab';
 import { StartOverlay } from './StartOverlay';
 import { Transport } from './Transport';
-import { Visualizer } from './Visualizer';
+import { VisualizerHost } from './VisualizerHost';
 import { togglePlayback, useUiState } from './uiState';
+import { useVisualMode } from './visualMode';
 
 /** Space toggles playback unless the user is interacting with a form control / button. */
 function useSpaceHotkey(): void {
@@ -67,6 +68,26 @@ function useLabHotkey(): void {
   }, []);
 }
 
+/** 'V' cycles the main-screen visual mode (not while typing; sliders / buttons keep working like for 'L'). */
+function useVisualModeHotkey(): void {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.key !== 'v' && e.key !== 'V') || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!useStore.getState().audioReady) return; // start overlay owns the keyboard until then
+      const t = e.target as HTMLElement | null;
+      if (t) {
+        const tag = t.tagName;
+        const isRange = tag === 'INPUT' && (t as HTMLInputElement).type === 'range';
+        if ((tag === 'INPUT' && !isRange) || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable) return;
+      }
+      e.preventDefault();
+      useVisualMode.getState().cycle(e.shiftKey ? -1 : 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+}
+
 function Toast() {
   const notice = useUiState((s) => s.notice);
   const dismiss = useUiState((s) => s.dismiss);
@@ -86,6 +107,7 @@ function Toast() {
 export function App() {
   useSpaceHotkey();
   useLabHotkey();
+  useVisualModeHotkey();
   return (
     <div className="app">
       <StartOverlay />
@@ -96,12 +118,12 @@ export function App() {
         <div className="header__right">
           <SoundLabButton />
           <div className="header__hint">
-            <kbd>Space</kbd> play / pause
+            <kbd>Space</kbd> play / pause · <kbd>V</kbd> visuals
           </div>
         </div>
       </header>
       <main className="main">
-        <Visualizer />
+        <VisualizerHost />
         <Transport />
         <div className="main__grid">
           <GenerationPanel />

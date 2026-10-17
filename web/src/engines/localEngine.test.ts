@@ -229,7 +229,7 @@ describe('LocalEngine: musical structure (128 bars per mood)', () => {
         const k = `${n.layer}:${bar}`;
         perBar.set(k, (perBar.get(k) ?? 0) + 1);
       }
-      const caps: Record<LayerId, number> = { pad: 9, arp: 16, bass: 16, lead: 9, drums: 40, texture: 4 };
+      const caps: Record<LayerId, number> = { pad: 9, arp: 16, bass: 16, lead: 9, drums: 40, texture: 4, bell: 0 };
       for (const [k, v] of perBar) expect(v, k).toBeLessThanOrEqual(caps[k.split(':')[0] as LayerId]);
 
       for (const n of notes) {

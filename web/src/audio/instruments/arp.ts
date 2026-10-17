@@ -3,6 +3,7 @@ import type { MoodId } from '@shared/index';
 import { FAST_RELEASE, centsBetween, clampCount, rampParam, setFatCount, VoiceAllocator, type Instrument, type InstrumentParam } from './instrument';
 import { dbToGain, logMap, midiToHz } from '../mapping';
 import { oscTrimDb } from '../oscTrim';
+import { denorm, waveFromChoiceValue } from './paramApply';
 import { UNISON_MAX, getBuiltinPreset, getPreset, type ArpPreset, type Wave } from '../presets';
 
 export const ARP_VOICES = 8;
@@ -135,6 +136,40 @@ export class ArpInstrument implements Instrument {
     this.filterPos = value01;
     const c = this.cutoffCents(value01, this.preset);
     for (const v of this.voices) rampParam(v.filter.detune, c, time, rampSeconds);
+  }
+
+  automateParam(presetKey: string, value01: number, time: number, rampSeconds = 0): void {
+    if (!presetKey.startsWith('arp.')) return;
+    const field = presetKey.slice(4);
+    const native = denorm(presetKey, value01);
+    if (native === null) return;
+    const p = this.preset;
+    switch (field) {
+      case 'wave': {
+        const w = waveFromChoiceValue(native);
+        this.preset = { ...p, wave: w };
+        for (let i = 0; i < this.voices.length; i++) if (this.alloc.isFree(i, time)) this.syncVoice(i);
+        break;
+      }
+      case 'attack':
+        this.preset = { ...p, attack: native };
+        for (const v of this.voices) v.envelope.attack = native;
+        break;
+      case 'decay':
+        this.preset = { ...p, decay: native };
+        for (const v of this.voices) v.envelope.decay = native;
+        break;
+      case 'release':
+        this.preset = { ...p, release: native };
+        for (const v of this.voices) v.envelope.release = native;
+        break;
+      case 'chorusWet':
+        this.preset = { ...p, chorusWet: native };
+        rampParam(this.chorus.wet, native, time, rampSeconds);
+        break;
+      default:
+        break;
+    }
   }
 
   setPreset(mood: MoodId, rampSeconds: number, resetAutomation = false): void {

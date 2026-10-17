@@ -12,8 +12,8 @@ import { LAYER_IDS } from '@shared/index';
 import { BEATS_PER_BAR, energyAt, liveMood, type LayerContext } from './layers/context';
 import { clamp } from './theory';
 
-const ENTER_BARS: Record<LayerId, number> = { pad: 2, texture: 2, arp: 2, lead: 2, bass: 1, drums: 1 };
-const EXIT_BARS: Record<LayerId, number> = { pad: 2, texture: 2, arp: 2, lead: 2, bass: 2, drums: 1 };
+const ENTER_BARS: Record<LayerId, number> = { pad: 2, texture: 2, arp: 2, lead: 2, bass: 1, drums: 1, bell: 2 };
+const EXIT_BARS: Record<LayerId, number> = { pad: 2, texture: 2, arp: 2, lead: 2, bass: 2, drums: 1, bell: 2 };
 
 const gainTarget = (l: LayerId): AutomationTarget => `layer.gain.${l}` as AutomationTarget;
 

@@ -3,6 +3,7 @@ import type { MoodId } from '@shared/index';
 import { FAST_RELEASE, centsBetween, clampCount, rampParam, setFatCount, VoiceAllocator, type Instrument, type InstrumentParam } from './instrument';
 import { dbToGain, logMap, midiToHz } from '../mapping';
 import { oscTrimDb } from '../oscTrim';
+import { denorm, waveFromChoiceValue } from './paramApply';
 import { UNISON_MAX, getBuiltinPreset, getPreset, type LeadPreset, type Wave } from '../presets';
 
 const REF_HZ = 600;
@@ -155,6 +156,41 @@ export class LeadInstrument implements Instrument {
     const c = centsBetween(REF_HZ, logMap(value01, this.preset.cutoffMin, this.preset.cutoffMax));
     rampParam(this.synth.voice0.filter.detune, c, time, rampSeconds);
     rampParam(this.synth.voice1.filter.detune, c, time, rampSeconds);
+  }
+
+  automateParam(presetKey: string, value01: number, time: number, rampSeconds = 0): void {
+    if (!presetKey.startsWith('lead.')) return;
+    const field = presetKey.slice(5);
+    const native = denorm(presetKey, value01);
+    if (native === null) return;
+    const p = this.preset;
+    const s = this.synth;
+    switch (field) {
+      case 'wave0': {
+        const w = waveFromChoiceValue(native);
+        this.preset = { ...p, wave0: w };
+        if (this.alloc.isFree(0, time)) this.syncOsc();
+        break;
+      }
+      case 'attack':
+        this.preset = { ...p, attack: native };
+        for (const v of [s.voice0, s.voice1]) v.envelope.attack = native;
+        break;
+      case 'release':
+        this.preset = { ...p, release: native };
+        for (const v of [s.voice0, s.voice1]) v.envelope.release = native;
+        break;
+      case 'vibratoAmount':
+        this.preset = { ...p, vibratoAmount: native };
+        rampParam(s.vibratoAmount, native, time, rampSeconds);
+        break;
+      case 'chorusWet':
+        this.preset = { ...p, chorusWet: native };
+        rampParam(this.chorus.wet, native, time, rampSeconds);
+        break;
+      default:
+        break;
+    }
   }
 
   setPreset(mood: MoodId, rampSeconds: number, resetAutomation = false): void {

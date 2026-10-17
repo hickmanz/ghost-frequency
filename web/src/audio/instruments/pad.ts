@@ -3,6 +3,7 @@ import type { MoodId } from '@shared/index';
 import { dbToGain, logMap, midiToHz } from '../mapping';
 import { oscTrimDb } from '../oscTrim';
 import { UNISON_MAX, getBuiltinPreset, getPreset, type PadPreset, type Wave } from '../presets';
+import { denorm, waveFromChoiceValue } from './paramApply';
 import { FAST_RELEASE, clampCount, rampParam, setFatCount, VoiceAllocator, type Instrument, type InstrumentParam } from './instrument';
 
 /** Voices in the pool. Each voice = 1..5 detuned oscillators (3 by default); long releases need headroom for overlap. */
@@ -134,6 +135,48 @@ export class PadInstrument implements Instrument {
     this.filterPos = value01;
     const p = this.preset;
     rampParam(this.filter.frequency, logMap(value01, p.cutoffMin, p.cutoffMax), time, rampSeconds);
+  }
+
+  automateParam(presetKey: string, value01: number, time: number, rampSeconds = 0): void {
+    if (!presetKey.startsWith('pad.')) return;
+    const field = presetKey.slice(4);
+    const native = denorm(presetKey, value01);
+    if (native === null) return;
+    const p = this.preset;
+    switch (field) {
+      case 'attack':
+        this.preset = { ...p, attack: native };
+        for (const v of this.voices) v.envelope.attack = native;
+        break;
+      case 'release':
+        this.preset = { ...p, release: native };
+        for (const v of this.voices) v.envelope.release = native;
+        break;
+      case 'baseType': {
+        const w = waveFromChoiceValue(native);
+        this.preset = { ...p, baseType: w };
+        for (let i = 0; i < this.voices.length; i++) if (this.alloc.isFree(i, time)) this.syncVoice(i);
+        break;
+      }
+      case 'chorusWet':
+        this.preset = { ...p, chorusWet: native };
+        rampParam(this.chorus.wet, native, time, rampSeconds);
+        break;
+      case 'spread':
+        this.preset = { ...p, spread: native };
+        for (const v of this.voices) v.oscillator.spread = native;
+        break;
+      case 'lfoRate':
+        this.preset = { ...p, lfoRate: native };
+        rampParam(this.lfo.frequency, native, time, rampSeconds);
+        break;
+      case 'lfoDepthCents':
+        this.preset = { ...p, lfoDepthCents: native };
+        rampParam(this.lfo.amplitude, native / 1000, time, rampSeconds);
+        break;
+      default:
+        break;
+    }
   }
 
   setPreset(mood: MoodId, rampSeconds: number, resetAutomation = false): void {

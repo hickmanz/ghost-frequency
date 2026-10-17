@@ -6,6 +6,7 @@ import type { TuningGroup } from '../tuning/schema';
 import { SpectrumView, ScopeView, drawEnvelope, drawFilters, drawWaves, type WaveLane } from './labDraw';
 import {
   buildFilterSpecs,
+  cutoffFromOpenness,
   envelopeInputFromValues,
   envelopeShape,
   findEnvelopeParams,
@@ -16,6 +17,7 @@ import {
   focusInfo,
   unisonRatios,
   visualDetune,
+  type FilterSpec,
   type VisualId,
 } from './labMath';
 import { getLabSource } from './labSource';
@@ -106,8 +108,12 @@ export const LabVisuals = memo(function LabVisuals({ group, mood }: Props) {
     let running = false;
     let lastLive = 0;
     let lastFrame = 0;
+    let lastComposerVer = -1;
 
     const get = (key: string): number => {
+      const src = getLabSource();
+      const live = src?.getComposerLiveParam?.(key);
+      if (live !== undefined && Number.isFinite(live)) return live;
       const o = useStore.getState().tuning[mood]?.[key];
       if (o !== undefined && Number.isFinite(o)) return o;
       return getDefaultValue(mood, key) ?? paramMin.get(key) ?? 0;
@@ -133,7 +139,17 @@ export const LabVisuals = memo(function LabVisuals({ group, mood }: Props) {
 
     const drawStatic = () => {
       const focusKey = useLabUi.getState().focusKey;
-      const specs = buildFilterSpecs(group.params, get, group.label);
+      let specs = buildFilterSpecs(group.params, get, group.label);
+      const src = layer !== null ? getLabSource() : null;
+      if (layer && src?.getComposerFilterOpenness) {
+        const open = src.getComposerFilterOpenness(layer);
+        if (open !== undefined) {
+          specs = specs.map((s): FilterSpec => {
+            if (s.cutMax <= s.cutMin * 1.02) return s;
+            return { ...s, liveCutHz: cutoffFromOpenness(open, s.cutMin, s.cutMax) };
+          });
+        }
+      }
       const focus = focusInfo(group.params, focusKey, specs);
       for (const kind of ['wave', 'envelope', 'filter'] as const) {
         cellRefs.current[kind]?.classList.toggle('is-hot', focus.visual === kind);
@@ -170,6 +186,12 @@ export const LabVisuals = memo(function LabVisuals({ group, mood }: Props) {
 
     const frame = (t: number) => {
       raf = requestAnimationFrame(frame);
+      const srcCheck = getLabSource();
+      const cVer = srcCheck?.getComposerLiveVersion?.() ?? 0;
+      if (cVer !== lastComposerVer) {
+        lastComposerVer = cVer;
+        dirty = true;
+      }
       if (dirty) {
         dirty = false;
         refreshIdle();
@@ -253,6 +275,7 @@ export const LabVisuals = memo(function LabVisuals({ group, mood }: Props) {
   }, [group, mood, info]);
 
   const odd = info.kinds.length % 2 === 1;
+  const showEnginePill = useStore((s) => s.playing && s.backend.engineId === 'js-auteur');
   const canvasRefFor: Record<CellKind, RefObject<HTMLCanvasElement>> = {
     scope: scopeRef,
     spectrum: specRef,
@@ -273,6 +296,11 @@ export const LabVisuals = memo(function LabVisuals({ group, mood }: Props) {
         >
           <h3 className="lab-vis__title" title={CELL_DESC[kind]}>
             {CELL_TITLE[kind]}
+            {showEnginePill && (kind === 'wave' || kind === 'envelope' || kind === 'filter') && (
+              <span className="lab-vis__engine-pill" title="Shape follows live composer automation">
+                engine
+              </span>
+            )}
           </h3>
           <div className="lab-vis__plot">
             <canvas ref={canvasRefFor[kind]} className="lab-vis__canvas" role="img" aria-label={CELL_DESC[kind]} />

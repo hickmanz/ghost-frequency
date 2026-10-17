@@ -1,7 +1,13 @@
 import { DEFAULT_PARAMS, type GenerationParams } from '@shared/index';
 import { FailoverEngine } from '../engines/failoverEngine';
-import { LocalEngine } from '../engines/localEngine';
+import {
+  createBrowserEngine,
+  DEFAULT_BROWSER_ENGINE_ID,
+  listBrowserEngines,
+  normalizeBrowserEngineId,
+} from '../engines/registry';
 import { RemoteEngine } from '../engines/remoteEngine';
+import type { ComposerEngine } from '../engines/types';
 import { BackendClient } from './backendClient';
 import { useStore } from './store';
 
@@ -15,7 +21,7 @@ export function getBackendClient(): BackendClient {
       onMessage: (msg) => {
         if (msg.type === 'ready') {
           useStore.getState().setBackend({
-            engines: [{ id: 'local-js', name: 'Built-in (JavaScript)' }, ...msg.engines],
+            engines: [...listBrowserEngines(), ...msg.engines],
           });
         }
       },
@@ -39,16 +45,18 @@ export function getBackendClient(): BackendClient {
   return client;
 }
 
-export function createEngineFactory(): () => LocalEngine | FailoverEngine {
+export function createEngineFactory(): () => ComposerEngine {
   return () => {
-    const mode = useStore.getState().backend.mode;
-    if (mode === 'python') {
+    const st = useStore.getState().backend;
+    if (st.mode === 'python') {
       getBackendClient();
-      const engId = useStore.getState().backend.engineId;
-      remote!.setEngineId(engId === 'local-js' ? 'py-markov' : engId);
+      const engId = st.engineId;
+      const isBrowserId = listBrowserEngines().some((e) => e.id === engId);
+      const pyId = isBrowserId || engId === 'local-js' ? 'py-markov' : engId;
+      remote!.setEngineId(pyId);
       return failover!;
     }
-    return new LocalEngine();
+    return createBrowserEngine(normalizeBrowserEngineId(st.engineId));
   };
 }
 
@@ -86,8 +94,8 @@ export function disablePythonMode(): void {
   useStore.getState().setBackend({
     mode: 'browser',
     status: 'disabled',
-    engineId: 'local-js',
-    engines: [{ id: 'local-js', name: 'Built-in (JavaScript)' }],
+    engineId: DEFAULT_BROWSER_ENGINE_ID,
+    engines: listBrowserEngines(),
   });
 }
 

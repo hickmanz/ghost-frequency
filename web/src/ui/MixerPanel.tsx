@@ -10,6 +10,7 @@ const LABELS: Record<LayerId | 'master', string> = {
   lead: 'Lead',
   drums: 'Percussion',
   texture: 'Ambient',
+  bell: 'Bell',
   master: 'Master',
 };
 
@@ -20,6 +21,7 @@ const ACCENTS: Record<LayerId | 'master', 'cyan' | 'magenta' | 'violet'> = {
   lead: 'cyan',
   drums: 'magenta',
   texture: 'violet',
+  bell: 'cyan',
   master: 'magenta',
 };
 

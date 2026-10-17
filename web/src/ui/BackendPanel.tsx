@@ -5,6 +5,7 @@ import {
   disconnectBackend,
   isPythonMode,
 } from '../services/backendService';
+import { browserEngineDescription, listBrowserEngines } from '../engines/registry';
 import { useStore, type BackendStatus } from '../services/store';
 
 const STATUS_LABEL: Record<BackendStatus, string> = {
@@ -14,6 +15,8 @@ const STATUS_LABEL: Record<BackendStatus, string> = {
   connected: 'Connected',
   error: 'Error',
 };
+
+const BROWSER_ENGINE_IDS = new Set(listBrowserEngines().map((e) => e.id));
 
 function httpsNonLocalHint(): string | null {
   if (typeof window === 'undefined') return null;
@@ -37,12 +40,19 @@ export function BackendPanel() {
   const connected = backend.status === 'connected';
   const hint = python ? httpsNonLocalHint() : null;
 
-  const sourceLabel =
-    backend.activeSource === 'local'
-      ? 'Fallback: JS'
+  const engineOptions = python
+    ? backend.engines.filter((en) => !BROWSER_ENGINE_IDS.has(en.id))
+    : backend.engines.filter((en) => BROWSER_ENGINE_IDS.has(en.id));
+
+  const activeEngineDesc = browserEngineDescription(backend.engineId);
+
+  const sourceLabel = python
+    ? backend.activeSource === 'local'
+      ? 'Fallback: JS (full default)'
       : backend.activeSource === 'remote'
-        ? `Python: ${backend.engineId === 'local-js' ? 'py-markov' : backend.engineId}`
-        : null;
+        ? `Python: ${BROWSER_ENGINE_IDS.has(backend.engineId) ? 'py-markov' : backend.engineId}`
+        : null
+    : engineOptions.find((e) => e.id === backend.engineId)?.name ?? backend.engineId;
 
   async function onModeChange(mode: 'browser' | 'python') {
     if (mode === 'browser') {
@@ -53,7 +63,7 @@ export function BackendPanel() {
     setBackend({
       mode: 'python',
       status: 'disconnected',
-      engineId: backend.engineId === 'local-js' ? 'py-markov' : backend.engineId,
+      engineId: BROWSER_ENGINE_IDS.has(backend.engineId) ? 'py-markov' : backend.engineId,
     });
   }
 
@@ -71,7 +81,7 @@ export function BackendPanel() {
 
   async function onEngineChange(id: string) {
     setBackend({ engineId: id });
-    if (python && connected) await getController().regenerate();
+    if (!python || connected) await getController().regenerate();
   }
 
   return (
@@ -82,15 +92,19 @@ export function BackendPanel() {
         </h2>
         <span className={`pill pill--${backend.status}`} role="status">
           <span className="pill__dot" aria-hidden="true" />
-          {STATUS_LABEL[backend.status]}
+          {python ? STATUS_LABEL[backend.status] : 'Browser'}
         </span>
       </div>
 
-      {sourceLabel && python && (
+      {sourceLabel && (
         <p className="note" role="status">
-          Active: {sourceLabel}
+          {python ? `Active: ${sourceLabel}` : `Composition: ${sourceLabel}`}
           {backend.latencyMs ? ` · ${backend.latencyMs} ms` : ''}
         </p>
+      )}
+
+      {!python && activeEngineDesc && (
+        <p className="note">{activeEngineDesc}</p>
       )}
 
       {backend.lastError && (
@@ -165,19 +179,15 @@ export function BackendPanel() {
           <select
             id="backend-engine"
             className="input"
-            value={backend.engineId}
-            disabled={!python}
+            value={python && BROWSER_ENGINE_IDS.has(backend.engineId) ? 'py-markov' : backend.engineId}
             onChange={(e) => void onEngineChange(e.currentTarget.value)}
           >
-            {(python
-              ? backend.engines.filter((en) => en.id !== 'local-js')
-              : backend.engines.filter((en) => en.id === 'local-js')
-            ).map((en) => (
+            {engineOptions.map((en) => (
               <option key={en.id} value={en.id}>
                 {en.name}
               </option>
             ))}
-            {python && backend.engines.every((e) => e.id !== 'py-markov') && (
+            {python && engineOptions.every((e) => e.id !== 'py-markov') && (
               <option value="py-markov">Python Markov (harmony graph)</option>
             )}
           </select>

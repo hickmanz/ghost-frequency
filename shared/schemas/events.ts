@@ -7,8 +7,8 @@
 
 export const SCHEMA_VERSION = 1;
 
-export type LayerId = 'pad' | 'arp' | 'bass' | 'lead' | 'drums' | 'texture';
-export const LAYER_IDS: readonly LayerId[] = ['pad', 'arp', 'bass', 'lead', 'drums', 'texture'];
+export type LayerId = 'pad' | 'arp' | 'bass' | 'lead' | 'drums' | 'texture' | 'bell';
+export const LAYER_IDS: readonly LayerId[] = ['pad', 'arp', 'bass', 'lead', 'drums', 'texture', 'bell'];
 
 export type MoodId = 'dreamy' | 'dark' | 'nostalgic' | 'space';
 export const MOOD_IDS: readonly MoodId[] = ['dreamy', 'dark', 'nostalgic', 'space'];
@@ -63,10 +63,13 @@ export interface NoteEvent {
  *  layer.gain.<layer> - transient section-level gain (multiplied with user mixer fader)
  */
 export type AutomationTarget =
-  | 'filter.pad' | 'filter.arp' | 'filter.bass' | 'filter.lead' | 'filter.texture'
+  | 'filter.pad' | 'filter.arp' | 'filter.bass' | 'filter.lead' | 'filter.texture' | 'filter.bell'
   | 'send.reverb' | 'send.delay' | 'texture.noise' | 'master.filter'
   | 'layer.gain.pad' | 'layer.gain.arp' | 'layer.gain.bass'
-  | 'layer.gain.lead' | 'layer.gain.drums' | 'layer.gain.texture';
+  | 'layer.gain.lead' | 'layer.gain.drums' | 'layer.gain.texture' | 'layer.gain.bell'
+  | 'duck.pad' | 'duck.texture'
+  /** Sound Lab preset path; value 0..1 mapped to that param's range (Auteur engine). */
+  | `param.${string}`;
 
 export interface AutomationEvent {
   kind: 'automation';

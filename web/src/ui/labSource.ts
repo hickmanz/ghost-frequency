@@ -11,6 +11,12 @@ export interface LabSource {
   getLayerLevels(): Record<LayerId, number>;
   /** sample rate of the audio context (for frequency axes); default 44100 if unknown */
   getSampleRate(): number;
+  /** Last composer-applied value for a Sound Lab key (native units / choice index). */
+  getComposerLiveParam?(key: string): number | undefined;
+  /** Normalized filter openness 0..1 from composer `filter.<layer>` automation. */
+  getComposerFilterOpenness?(layer: LayerId): number | undefined;
+  /** Bumps when composer live telemetry changes (Sound Lab visuals). */
+  getComposerLiveVersion?(): number;
 }
 
 let source: LabSource | null = null;

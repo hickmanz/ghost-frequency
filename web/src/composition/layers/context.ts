@@ -21,6 +21,11 @@ export interface LayerContext {
   bank: MotifBank;
   /** per-engine memo (cleared on init) for decisions that must stay stable across batches */
   cache: Map<string, unknown>;
+  /**
+   * Set only by the Developed engine. When absent, every layer renders exactly as Full does.
+   * `sourceLoop` is the original chord-loop length in bars (before last-pass expansion).
+   */
+  develop?: { sourceLoop: number; passCount: number };
 }
 
 /** mood config of the *live* mood param (styling follows live changes; harmony follows the plan) */

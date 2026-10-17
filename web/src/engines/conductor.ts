@@ -5,6 +5,7 @@ import type { ComposerEngine } from './types';
 import type { PlaybackController } from '../services/controller';
 import { useStore } from '../services/store';
 import { keyLabel } from '../composition/theory';
+import { EventFeed } from './eventFeed';
 
 /** How far ahead (in beats) of the audio clock we keep notes scheduled. 4 bars of 4/4. */
 const LOOKAHEAD_BEATS = 16;
@@ -39,6 +40,8 @@ export class Conductor implements PlaybackController {
   private pumping = false;
   private unsubscribe: Array<() => void> = [];
   private resetting: Promise<void> | null = null;
+  /** Rolling window of generated events for main-screen visuals (history + lookahead). */
+  readonly feed = new EventFeed();
 
   constructor(
     private readonly renderer: AudioRenderer,
@@ -77,6 +80,7 @@ export class Conductor implements PlaybackController {
       this.engine.init(st.params.seed, st.params);
       this.nextBar = 0;
       this.markers = [];
+      this.feed.clear();
       useStore.getState().setAudioReady(true);
     }
     if (this.resetting) await this.resetting;
@@ -123,6 +127,7 @@ export class Conductor implements PlaybackController {
       this.renderer.setMood(params.mood);
       this.nextBar = 0;
       this.markers = [];
+      this.feed.clear();
       this.pump(true);
       if (wasPlaying) {
         this.renderer.play();
@@ -188,6 +193,7 @@ export class Conductor implements PlaybackController {
         if (ahead >= LOOKAHEAD_BEATS) break;
         const batch = this.engine.renderBars(this.nextBar, 1, params);
         this.collectMarkers(batch);
+        this.feed.add(batch);
         this.renderer.schedule(batch);
         this.nextBar += 1;
       }

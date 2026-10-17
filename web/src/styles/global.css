@@ -611,6 +611,86 @@ select.input {
   color: var(--cyan);
 }
 
+/* ---------- visual mode host (segmented control under the visualizer) ---------- */
+
+.vhost {
+  width: 100%;
+}
+
+.vhost__bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.vhost__hint {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.vhost__modes {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 999px;
+  background: rgba(7, 3, 26, 0.62);
+  border: 1px solid var(--panel-border);
+}
+
+.vhost__mode {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.vhost__mode:hover {
+  color: var(--text);
+}
+
+.vhost__mode:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
+}
+
+.vhost__mode.is-active {
+  color: #fff;
+  background: rgba(255, 43, 214, 0.28);
+  box-shadow: 0 0 10px rgba(255, 43, 214, 0.35);
+}
+
+@media (max-width: 600px) {
+  .vhost__bar {
+    justify-content: center;
+  }
+
+  .vhost__hint {
+    display: none;
+  }
+
+  .vhost__modes {
+    width: 100%;
+  }
+
+  .vhost__mode {
+    flex: 1;
+    padding: 6px 4px;
+  }
+}
+
 /* ---------- transport ---------- */
 
 .transport {
@@ -1702,6 +1782,19 @@ html.has-lab {
 
 .lab-vis__cell.is-hot .lab-vis__title {
   color: var(--magenta);
+}
+
+.lab-vis__engine-pill {
+  margin-left: 6px;
+  padding: 1px 5px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--violet);
+  border: 1px solid rgba(139, 92, 255, 0.45);
+  border-radius: 3px;
+  vertical-align: middle;
 }
 
 .lab-vis__plot {

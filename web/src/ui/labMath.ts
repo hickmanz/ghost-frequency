@@ -368,6 +368,15 @@ export interface FilterSpec {
   /** filter-envelope sweep in octaves (0 = none / unknown) */
   octaves: number;
   keys: FilterKeys;
+  /** Composer automation: current cutoff (Hz) between cutMin and cutMax */
+  liveCutHz?: number;
+}
+
+/** Map normalized filter automation 0..1 to Hz between min and max (log). */
+export function cutoffFromOpenness(open: number, minHz: number, maxHz: number): number {
+  const t = clamp(open, 0, 1);
+  if (!(minHz > 0) || maxHz <= minHz) return maxHz;
+  return minHz * Math.pow(maxHz / minHz, t);
 }
 
 export type Getter = (key: string) => number;

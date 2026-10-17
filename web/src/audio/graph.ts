@@ -6,7 +6,9 @@ import { MasterBus } from './master';
 import { SEND_NEUTRAL, parseTarget, sendMultiplier } from './mapping';
 import { ChannelStrip } from './mixer';
 import { MonitorTaps } from './monitor';
+import { paramValueFrom01 } from '../tuning/paramAutomation';
 import { MOOD_RAMP_SECONDS, getPreset } from './presets';
+import { ComposerLiveState } from './composerLive';
 import type { DrumSampleSet } from './samples';
 
 export interface GraphOptions {
@@ -44,6 +46,7 @@ export class AudioGraph {
   private reverbMul = SEND_NEUTRAL;
   private delayMul = SEND_NEUTRAL;
   private disposed = false;
+  readonly composerLive = new ComposerLiveState();
 
   constructor(opts: GraphOptions) {
     this.mood = opts.mood;
@@ -151,9 +154,13 @@ export class AudioGraph {
     switch (t.kind) {
       case 'filter':
         this.instruments[t.layer].automate('filter', value01, time, rampSeconds);
+        this.composerLive.setFilter(t.layer, value01);
         break;
       case 'layerGain':
         this.strips[t.layer].setAutomationGain(value01, time, rampSeconds);
+        break;
+      case 'duck':
+        this.strips[t.layer].setDuck(value01, time, rampSeconds);
         break;
       case 'sendReverb':
         this.reverbMul = sendMultiplier(value01);
@@ -169,6 +176,15 @@ export class AudioGraph {
       case 'masterFilter':
         this.master.setFilter(value01, time, rampSeconds);
         break;
+      case 'param': {
+        const inst = this.instruments[t.layer];
+        if (inst && 'automateParam' in inst && typeof inst.automateParam === 'function') {
+          inst.automateParam(t.key, value01, time, rampSeconds);
+        }
+        const native = paramValueFrom01(t.key, value01);
+        if (native !== null) this.composerLive.setParam(t.key, native);
+        break;
+      }
       default:
         break;
     }
@@ -224,6 +240,7 @@ export class AudioGraph {
    */
   resetAutomationState(): void {
     const now = Tone.now();
+    this.composerLive.clear();
     this.reverbMul = SEND_NEUTRAL;
     this.delayMul = SEND_NEUTRAL;
     for (const inst of allInstruments(this.instruments)) inst.setPreset(this.mood, 0.05, true);
