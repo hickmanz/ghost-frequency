@@ -111,6 +111,22 @@ describe('harmony: progressions', () => {
 });
 
 describe('harmony: voice leading + bass', () => {
+  it('pathPick chooses alternate voicings across seeds', () => {
+    const mood = MOODS.dreamy;
+    const key = randomKey(mood, 99);
+    const prog = generateProgression(key, mood, stream(11, 'pp', 99));
+    const seen = new Set<string>();
+    for (let i = 0; i < 24; i++) {
+      const v = voiceLeadLoop(prog.chords, {
+        open: mood.padOpen,
+        pathPick: stream(i, 'ppick'),
+        pathSlack: 14,
+      });
+      seen.add(JSON.stringify(v));
+    }
+    expect(seen.size).toBeGreaterThan(1);
+  });
+
   it('pad voicings stay in register and move little (avg < 4 semitones per voice)', () => {
     for (const id of MOOD_IDS) {
       const mood = MOODS[id];

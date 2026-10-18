@@ -35,4 +35,16 @@ export class AuteurEngine implements ComposerEngine {
   get sections() {
     return this.local.sections;
   }
+
+  rewind(bar: number): void {
+    this.local.rewind(bar);
+  }
+
+  skipToNextSong(fromBar: number, params: GenerationParams): number {
+    return this.local.skipToNextSong(fromBar, params);
+  }
+
+  dispose(): void {
+    this.local.dispose();
+  }
 }

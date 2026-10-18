@@ -43,6 +43,24 @@ export function rampParam(param: RampableParam, value: number, time: number, ram
   else param.setValueAtTime(value, time);
 }
 
+export interface GlideableParam {
+  setValueAtTime(value: any, time: number): unknown;
+  setTargetAtTime(value: any, startTime: number, timeConstant: number): unknown;
+  cancelScheduledValues(time: number): unknown;
+}
+
+/**
+ * For user-driven gain stages (faders, mute/solo, pause gate). Unlike rampParam (Tone rampTo = cancelAndHoldAtTime +
+ * linear ramp, which browsers mishandle when another event sits at the same time and can leave the value stuck),
+ * this cancels later events and glides exponentially from whatever the current value is. Reaches ~98% after
+ * `rampSeconds`.
+ */
+export function glideParam(param: GlideableParam, value: number, time: number, rampSeconds = 0): void {
+  param.cancelScheduledValues(time);
+  if (rampSeconds > 0.003) param.setTargetAtTime(value, time, rampSeconds / 4);
+  else param.setValueAtTime(value, time);
+}
+
 /** Integer oscillator count within 1..max (non-finite -> 1). */
 export function clampCount(n: number, max: number): number {
   return Number.isFinite(n) ? Math.min(max, Math.max(1, Math.round(n))) : 1;

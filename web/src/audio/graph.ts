@@ -9,7 +9,6 @@ import { MonitorTaps } from './monitor';
 import { paramValueFrom01 } from '../tuning/paramAutomation';
 import { MOOD_RAMP_SECONDS, getPreset } from './presets';
 import { ComposerLiveState } from './composerLive';
-import type { DrumSampleSet } from './samples';
 
 export interface GraphOptions {
   mood: MoodId;
@@ -203,8 +202,9 @@ export class AudioGraph {
     for (const inst of allInstruments(this.instruments)) inst.releaseAll(time);
   }
 
-  setDrumSamples(set: DrumSampleSet): void {
-    if (!this.disposed) this.instruments.drums.setSamples(set);
+  /** Per-song drum kit (index into DRUM_KIT_IDS) and tuning in semitones. */
+  setDrumKit(kitIndex: number, tune: number): void {
+    if (!this.disposed) this.instruments.drums.setKit(kitIndex, tune);
   }
 
   /** Sound Lab: monitor ONE layer's own instrument output (pre channel strip). null = detach. */

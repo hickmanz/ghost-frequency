@@ -9,6 +9,7 @@ cd python
 python -m venv .venv
 .venv\Scripts\activate   # Windows
 pip install -r requirements.txt
+pip install -r requirements-ml.txt   # optional: CUDA neural engines
 ```
 
 ## Run
@@ -45,7 +46,19 @@ If Python cannot keep up or disconnects, playback continues on the JS engine and
 - `GET /health` — no auth
 - `GET /engines` — `Authorization: Bearer <token>`
 - `POST /generate` — one-shot bar render (same schema as WebSocket `batch`)
-- `WS /ws` — streaming `hello` → `ready`, then `render` → `batch`
+- `WS /ws` — streaming `hello` → `ready`, then `render` → `batch` (protocol **v2**)
+- `vibe_prompt` → `vibe` (text → brightness/tension/density/groove)
+
+### Neural engines
+
+| ID | Mode |
+|----|------|
+| `py-neural-layers` | Hybrid: browser sends **BarContext** per bar; server returns lead/arp/bass/drums notes only |
+| `py-neural-full` | Full replacement composer (skeleton + all layers) |
+
+Set `GF_NEURAL_STUB=1` to force the in-process stub generator (CI / no GPU). Optional: `GF_NEURAL_MODEL`, `GF_AMT_MODEL`.
+
+Phase 0 timing check: `python -m training.spike_amt`
 
 ## HTTPS / hosted pages
 

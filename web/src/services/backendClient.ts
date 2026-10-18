@@ -28,8 +28,16 @@ function wsUrl(httpUrl: string): string {
   return u.toString();
 }
 
-function isAuthError(code: string): boolean {
-  return code === 'auth_failed' || code === 'protocol_mismatch' || code === 'Origin not allowed';
+/** Errors that should not trigger an automatic reconnect loop. */
+function isTerminalError(code: string): boolean {
+  return (
+    code === 'auth_failed' ||
+    code === 'protocol_mismatch' ||
+    code === 'Origin not allowed' ||
+    code === 'invalid_message' ||
+    code === 'hello_timeout' ||
+    code === 'internal'
+  );
 }
 
 export class BackendClient {
@@ -45,6 +53,7 @@ export class BackendClient {
   private engines: EngineDescriptor[] = [];
   private lastLatencyMs = 0;
   private listeners = new Set<(msg: ServerMessage) => void>();
+  private haltReconnect = false;
 
   constructor(private readonly opts: BackendClientOptions = {}) {}
 
@@ -100,6 +109,11 @@ export class BackendClient {
 
   connect(baseUrl: string, token: string, hello: Omit<Extract<ClientMessage, { type: 'hello' }>, 'type' | 'protocol' | 'token'>): void {
     this.manualDisconnect = false;
+    this.haltReconnect = false;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     this.url = baseUrl.replace(/\/$/, '');
     this.token = token;
     this.helloPayload = () => ({
@@ -130,6 +144,10 @@ export class BackendClient {
 
   private openSocket(firstMessage: ClientMessage): void {
     this.clearTimers();
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -157,9 +175,12 @@ export class BackendClient {
         this.startHeartbeat();
       } else if (data.type === 'error') {
         this.opts.onError?.(data.code, data.message);
-        if (isAuthError(data.code)) {
-          this.manualDisconnect = true;
+        if (isTerminalError(data.code)) {
+          this.haltReconnect = true;
           this.setStatus('error');
+          if (data.code === 'auth_failed' || data.code === 'protocol_mismatch') {
+            this.manualDisconnect = true;
+          }
           socket.close();
         }
       } else if (data.type === 'pong' && data.t !== undefined) {
@@ -175,6 +196,10 @@ export class BackendClient {
       this.ws = null;
       if (this.manualDisconnect) {
         this.setStatus('disconnected');
+        return;
+      }
+      if (this.haltReconnect) {
+        this.setStatus('error');
         return;
       }
       this.setStatus('error');

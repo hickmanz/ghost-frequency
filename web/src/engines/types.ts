@@ -1,8 +1,12 @@
 import type { EventBatch, GenerationParams } from '@shared/index';
 
+import type { EngineMode, LayerId } from '@shared/index';
+
 export interface EngineInfo {
   id: string;
   name: string;
+  mode?: EngineMode;
+  layers?: LayerId[];
 }
 
 /**
@@ -20,6 +24,10 @@ export interface ComposerEngine {
   readonly info: EngineInfo;
   init(seed: number, params: GenerationParams): void;
   renderBars(fromBar: number, count: number, params: GenerationParams): EventBatch;
+  /** Drop composition state from `bar` so bars can be re-rendered with new controls. */
+  rewind?(bar: number): void;
+  /** Jump timeline to the start of the next song (returns target bar). */
+  skipToNextSong?(fromBar: number, params: GenerationParams): number;
   /** Optional: request upcoming bars (network engines). */
   prefetch?(fromBar: number, count: number, params: GenerationParams): void;
   dispose?(): void;

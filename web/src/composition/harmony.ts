@@ -445,6 +445,10 @@ export interface VoiceLeadOptions {
   /** voicing the previous section ended on (smooth section joins) */
   prev?: readonly number[] | null;
   open?: number;
+  /** When set, pick among near-optimal loop paths instead of always the cheapest. */
+  pathPick?: Rng;
+  /** Extra voicingDistance cost allowed when pathPick is set (typical 4–16). */
+  pathSlack?: number;
 }
 
 /**
@@ -462,7 +466,9 @@ export function voiceLeadLoop(chords: readonly RealChord[], opts: VoiceLeadOptio
       cands[i] = voicingCandidates(chords[i]!, 1, PAD_LO - 5, PAD_HI + 7);
     }
   }
+  const slack = opts.pathPick ? Math.max(0, opts.pathSlack ?? 8) : 0;
   let best: { cost: number; path: number[] } | null = null;
+  const paths: Array<{ cost: number; path: number[] }> = [];
   const first = cands[0]!;
   for (let s = 0; s < first.length; s++) {
     let cost = new Array<number>(cands[0]!.length).fill(Infinity);
@@ -487,16 +493,24 @@ export function voiceLeadLoop(chords: readonly RealChord[], opts: VoiceLeadOptio
     // close the loop
     for (let k = 0; k < cands[n - 1]!.length; k++) {
       const total = cost[k]! + (n > 1 ? voicingDistance(cands[n - 1]![k]!, first[s]!) : 0);
-      if (!best || total < best.cost) {
-        const path = new Array<number>(n).fill(0);
-        path[n - 1] = k;
-        for (let i = n - 1; i >= 1; i--) path[i - 1] = back[i - 1]![path[i]!]!;
-        path[0] = s;
-        best = { cost: total, path };
-      }
+      const path = new Array<number>(n).fill(0);
+      path[n - 1] = k;
+      for (let i = n - 1; i >= 1; i--) path[i - 1] = back[i - 1]![path[i]!]!;
+      path[0] = s;
+      if (!best || total < best.cost) best = { cost: total, path };
+      if (opts.pathPick) paths.push({ cost: total, path });
     }
   }
-  return best!.path.map((k, i) => cands[i]![k]!.slice());
+  const chosen = (() => {
+    if (!opts.pathPick || paths.length === 0) return best!;
+    const min = Math.min(...paths.map((p) => p.cost));
+    const pool = paths.filter((p) => p.cost <= min + slack);
+    return weightedPick(
+      opts.pathPick,
+      pool.map((c) => [c, 1 / (1 + Math.max(0, c.cost - min))] as const),
+    );
+  })();
+  return chosen.path.map((k, i) => cands[i]![k]!.slice());
 }
 
 /** Voicing for a single chord (e.g. a pivot chord) led from `prev` and, optionally, toward `next`. */

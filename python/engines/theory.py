@@ -64,6 +64,17 @@ def clamp(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 
 
+def sanitize_vibe(raw: Any) -> dict[str, float]:
+    if not isinstance(raw, dict):
+        return {"brightness": 0.5, "tension": 0.5, "density": 0.5, "groove": 0.5}
+    return {
+        "brightness": clamp01(float(raw.get("brightness", 0.5))),
+        "tension": clamp01(float(raw.get("tension", 0.5))),
+        "density": clamp01(float(raw.get("density", 0.5))),
+        "groove": clamp01(float(raw.get("groove", 0.5))),
+    }
+
+
 def sanitize_params(p: dict[str, Any]) -> dict[str, Any]:
     moods = {"dreamy", "dark", "nostalgic", "space"}
     mood = p.get("mood", "nostalgic")
@@ -76,6 +87,7 @@ def sanitize_params(p: dict[str, Any]) -> dict[str, Any]:
         except (TypeError, ValueError):
             tempo = None
     seed = int(p.get("seed", 0)) & 0xFFFFFFFF
+    vibe = sanitize_vibe(p.get("vibe"))
     return {
         "mood": mood,
         "energy": clamp01(float(p.get("energy", 0.5))),
@@ -83,6 +95,7 @@ def sanitize_params(p: dict[str, Any]) -> dict[str, Any]:
         "variation": clamp01(float(p.get("variation", 0.5))),
         "tempo": tempo,
         "seed": seed,
+        "vibe": vibe,
     }
 
 

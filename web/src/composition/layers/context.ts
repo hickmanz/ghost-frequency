@@ -3,6 +3,7 @@ import type { GenerationParams, LayerId, NoteEvent } from '@shared/index';
 import type { MotifBank } from '../motifs';
 import { MOODS, type MoodConfig } from '../moods';
 import { effectiveEnergy, type SectionPlan } from '../plan';
+import { resolvedSteer } from '../steer';
 import { clamp } from '../theory';
 
 export const BEATS_PER_BAR = 4;
@@ -35,7 +36,8 @@ export const relBar = (ctx: LayerContext, bar: number): number => bar - ctx.plan
 
 /** Effective energy (0..1) at an absolute bar. */
 export function energyAt(ctx: LayerContext, bar: number): number {
-  return effectiveEnergy(ctx.plan, relBar(ctx, bar), ctx.params.energy);
+  const build = resolvedSteer(ctx.params).build;
+  return effectiveEnergy(ctx.plan, relBar(ctx, bar), ctx.params.energy, build);
 }
 
 export function note(layer: LayerId, beat: number, durBeats: number, midi: number, vel: number): NoteEvent {

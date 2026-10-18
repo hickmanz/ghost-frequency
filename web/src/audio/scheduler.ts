@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import type { AutomationEvent, EventBatch, NoteEvent } from '@shared/index';
+import type { AutomationEvent, EventBatch, NoteEvent, PaletteEvent } from '@shared/index';
 import { beatsToSeconds, clampBpm, rampBeatsToSeconds, secondsPerBeat, splitBeatToTick } from './mapping';
 
 export type TransportLike = ReturnType<typeof Tone.getTransport>;
@@ -9,6 +9,7 @@ export interface SchedulerHost {
   onAutomation(ev: AutomationEvent, time: number, rampSeconds: number): void;
   /** called when the tempo target changes (immediately for the first tempo, otherwise at the batch start) */
   onTempo(bpm: number, time: number, rampSeconds: number): void;
+  onPalette?(ev: PaletteEvent, time: number): void;
 }
 
 /** Length of the smooth tempo ramp in beats (measured at the new tempo). */
@@ -68,6 +69,34 @@ export class Scheduler {
 
   isPlaying(): boolean {
     return this.playRequested;
+  }
+
+  /** Cancel pending events at or after `beat`. Returns count cancelled. */
+  cancelFrom(beat: number): number {
+    const { tick } = splitBeatToTick(beat, this.ppq);
+    let n = 0;
+    for (const [id, t] of this.pending) {
+      if (t >= tick) {
+        this.transport.clear(id);
+        this.pending.delete(id);
+        n++;
+      }
+    }
+    return n;
+  }
+
+  /** Jump the transport clock and drop all pending scheduled events (skip song / hard seek). */
+  seekToBeat(beat: number): void {
+    if (this.disposed) return;
+    const b = Math.max(0, beat);
+    for (const id of [...this.pending.keys()]) {
+      this.transport.clear(id);
+      this.pending.delete(id);
+    }
+    const { tick } = splitBeatToTick(b, this.ppq);
+    this.transport.ticks = tick;
+    this.maxBeat = b;
+    this.targetBpm = null;
   }
 
   /** Cancel every scheduled event, stop the transport and rewind to beat 0. */
@@ -131,6 +160,7 @@ export class Scheduler {
     for (const ev of batch.events) {
       if (ev.kind === 'note') this.scheduleNote(ev);
       else if (ev.kind === 'automation') this.scheduleAutomation(ev);
+      else if (ev.kind === 'palette') this.schedulePalette(ev);
       // 'section' and 'audioClip' events are ignored by the audio renderer in v1
     }
   }
@@ -149,6 +179,11 @@ export class Scheduler {
       this.host.onNote(ev, time, dur);
     });
     this.maxBeat = Math.max(this.maxBeat, ev.beat);
+  }
+
+  private schedulePalette(ev: PaletteEvent): void {
+    if (!this.host.onPalette || !Number.isFinite(ev.beat)) return;
+    this.scheduleAt(ev.beat, (time) => this.host.onPalette!(ev, time));
   }
 
   private scheduleAutomation(ev: AutomationEvent): void {

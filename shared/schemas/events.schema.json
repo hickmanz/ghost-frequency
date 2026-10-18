@@ -109,7 +109,25 @@
         "sectionIndex": { "type": "integer", "minimum": 0 },
         "key": { "$ref": "#/definitions/KeySpec" },
         "chord": { "$ref": "#/definitions/ChordSpec" },
-        "energy": { "type": "number", "minimum": 0, "maximum": 1 }
+        "energy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "songIndex": { "type": "integer", "minimum": 0 },
+        "songTitle": { "type": "string" },
+        "songProgress": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "PaletteEvent": {
+      "type": "object",
+      "required": ["kind", "beat", "songIndex", "paletteId", "overrides"],
+      "properties": {
+        "kind": { "const": "palette" },
+        "beat": { "type": "number" },
+        "songIndex": { "type": "integer", "minimum": 0 },
+        "paletteId": { "type": "string" },
+        "overrides": {
+          "type": "object",
+          "additionalProperties": { "type": "number" }
+        }
       },
       "additionalProperties": false
     },
@@ -131,6 +149,7 @@
         { "$ref": "#/definitions/NoteEvent" },
         { "$ref": "#/definitions/AutomationEvent" },
         { "$ref": "#/definitions/SectionEvent" },
+        { "$ref": "#/definitions/PaletteEvent" },
         { "$ref": "#/definitions/AudioClipEvent" }
       ]
     },

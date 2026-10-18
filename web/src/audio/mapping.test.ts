@@ -9,11 +9,13 @@ import {
   invLogMap,
   logMap,
   masterFilterHz,
+  brightToMasterFilter,
   noiseLevelToGain,
   parseTarget,
   rampBeatsToSeconds,
   safeCutoff,
   saturationCurve,
+  drumSaturationMix,
   secondsToBeats,
   sendMultiplier,
   splitBeatToTick,
@@ -131,6 +133,11 @@ describe('automation value mapping', () => {
     expect(noiseLevelToGain(0.5)).toBeGreaterThan(noiseLevelToGain(0.2));
   });
 
+  it('default Bright leaves the master filter open; low Bright darkens', () => {
+    expect(masterFilterHz(brightToMasterFilter(0.55, 0.1))).toBeGreaterThan(15000);
+    expect(masterFilterHz(brightToMasterFilter(0, 0))).toBeLessThan(4000);
+  });
+
   it('parseTarget', () => {
     expect(parseTarget('filter.pad')).toEqual({ kind: 'filter', layer: 'pad' });
     expect(parseTarget('layer.gain.drums')).toEqual({ kind: 'layerGain', layer: 'drums' });
@@ -147,6 +154,15 @@ describe('automation value mapping', () => {
     const slope = (c[mid + 1]! - c[mid]!) / (2 / (c.length - 1));
     expect(slope).toBeCloseTo(1, 2);
     expect(Math.max(...c)).toBeLessThanOrEqual(1);
+  });
+
+  it('drum saturation is parallel: clean kits are dry, the dry path never drops far', () => {
+    expect(drumSaturationMix(1)).toEqual({ wet: 0, dry: 1 });
+    for (const d of [1.1, 1.6, 2.3, 3.2, 10]) {
+      const m = drumSaturationMix(d);
+      expect(m.wet).toBeLessThanOrEqual(0.45);
+      expect(m.dry).toBeGreaterThanOrEqual(0.75);
+    }
   });
 });
 

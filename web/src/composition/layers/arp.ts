@@ -7,6 +7,7 @@ import type { ArpFamily } from '../moods';
 import { layerOn, segmentAt } from '../plan';
 import { chance, int, jitter, stream, type Rng } from '../rng';
 import { clamp, mod12 } from '../theory';
+import { feelMul, layerComplexity, resolvedSteer } from '../steer';
 import { BEATS_PER_BAR, energyAt, liveMood, note, type LayerContext } from './context';
 
 const ARP_MIN = 57;
@@ -113,7 +114,9 @@ export function renderArp(ctx: LayerContext): NoteEvent[] {
     if (!layerOn(plan, 'arp', rel)) continue;
     const seg = segmentAt(plan, rel);
     const e = energyAt(ctx, bar);
-    const cx = params.complexity;
+    const steer = resolvedSteer(params);
+    const cx = layerComplexity(params);
+    const feel = feelMul(steer.feel);
     const pool = arpPool(seg.chord.rootPc, seg.chord.intervals, cx);
     if (pool.length < 3) continue;
 
@@ -123,7 +126,8 @@ export function renderArp(ctx: LayerContext): NoteEvent[] {
 
     // rate: 16ths when the music is energetic/complex, else 8ths
     const drive = 0.6 * e + 0.4 * cx + 0.2 * (mood.arp.density - 0.5);
-    const steps = drive > 0.6 || plan.arpFamily === 'dotted' ? 16 : 8;
+    const baseSteps = drive > 0.6 || plan.arpFamily === 'dotted' ? 16 : 8;
+    const steps = Math.min(32, Math.max(4, Math.round(baseSteps * feel)));
     const stepLen = BEATS_PER_BAR / steps;
 
     // family: mostly the section family, sometimes a neighbour for variety (per 8-bar block)

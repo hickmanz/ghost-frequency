@@ -40,7 +40,7 @@ class MarkovEngine(ComposerEngine):
 
     @property
     def info(self) -> EngineInfo:
-        return EngineInfo(id="py-markov", name="Python Markov (harmony graph)")
+        return EngineInfo(id="py-markov", name="Python Markov (harmony graph)", mode="full")
 
     def init(self, seed: int, params: dict[str, Any]) -> None:
         p = sanitize_params({**params, "seed": seed})
@@ -79,7 +79,13 @@ class MarkovEngine(ComposerEngine):
                     break
         return cur
 
-    def render_bars(self, from_bar: int, count: int, params: dict[str, Any]) -> dict[str, Any]:
+    def render_bars(
+        self,
+        from_bar: int,
+        count: int,
+        params: dict[str, Any],
+        context: list[Any] | None = None,
+    ) -> dict[str, Any]:
         p = sanitize_params(params)
         if self._key is None or self._seed != p["seed"]:
             self.init(p["seed"], p)

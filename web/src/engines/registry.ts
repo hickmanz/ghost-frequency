@@ -4,7 +4,7 @@ import { DevelopEngine } from './developEngine';
 import { LocalEngine } from './localEngine';
 import { SparseAmbientEngine } from './sparseAmbientEngine';
 
-export const DEFAULT_BROWSER_ENGINE_ID = 'local-js';
+export const DEFAULT_BROWSER_ENGINE_ID = 'js-auteur';
 
 export interface BrowserEngineEntry {
   id: string;
@@ -16,10 +16,17 @@ export interface BrowserEngineEntry {
 
 export const BROWSER_ENGINES: readonly BrowserEngineEntry[] = [
   {
-    id: 'local-js',
-    name: 'Full (default)',
+    id: 'js-auteur',
+    name: 'Auteur (default)',
     description:
-      'Full procedural composer: sections, motifs, voice leading, all layers. Best overall quality.',
+      'Full composition (sections, motifs, voice leading, all layers) plus timbral direction: the engine drives Sound Lab parameters over time: waves, ADSR, chorus, drive, filters, and space.',
+    factory: () => new AuteurEngine(),
+  },
+  {
+    id: 'local-js',
+    name: 'Full (static timbre)',
+    description:
+      'The same composition as Auteur, but sounds stay where the mood presets and Sound Lab put them.',
     factory: () => new LocalEngine(),
   },
   {
@@ -30,17 +37,10 @@ export const BROWSER_ENGINES: readonly BrowserEngineEntry[] = [
     factory: () => new SparseAmbientEngine(),
   },
   {
-    id: 'js-auteur',
-    name: 'Auteur (timbral)',
-    description:
-      'Same full composition as default, but the engine drives Sound Lab parameters over time: waves, ADSR, chorus, drive, filters, and space.',
-    factory: () => new AuteurEngine(),
-  },
-  {
     id: 'js-develop',
     name: 'Developed',
     description:
-      'Same harmony family as Full, but later passes of a section are arranged: motif in the arp, thinner call slots, a sparse bell, and low-energy swing.',
+      'Same harmony family as Full, but later passes of a section are arranged: motif in the arp, thinner call slots, and a sparse bell.',
     factory: () => new DevelopEngine(),
   },
 ];

@@ -1,9 +1,9 @@
-import type { EventBatch, GenerationParams } from '@shared/index';
+import type { BarContext, EventBatch, GenerationParams } from '@shared/index';
 import type { BackendClient } from '../services/backendClient';
 import { useStore } from '../services/store';
 import type { ComposerEngine, EngineInfo } from './types';
 
-const PREFETCH_AHEAD = 8;
+const DEFAULT_PREFETCH_AHEAD = 8;
 const KEEP_BARS = 2;
 
 function batchForSingleBar(full: EventBatch, bar: number): EventBatch {
@@ -26,8 +26,16 @@ function barInBatch(batch: EventBatch, bar: number): boolean {
   return batch.startBeat <= start + 1e-6 && batch.endBeat >= end - 1e-6;
 }
 
+function vibeEqual(a: GenerationParams['vibe'], b: GenerationParams['vibe']): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return a.brightness === b.brightness && a.tension === b.tension && a.density === b.density && a.groove === b.groove;
+}
+
 export class RemoteEngine implements ComposerEngine {
   readonly info: EngineInfo = { id: 'remote', name: 'Remote (Python)' };
+
+  prefetchAhead = DEFAULT_PREFETCH_AHEAD;
 
   private buffer = new Map<number, EventBatch>();
   private epoch = 0;
@@ -37,20 +45,30 @@ export class RemoteEngine implements ComposerEngine {
   private highestRequested = -1;
   private connected = false;
   private unsub: (() => void) | null = null;
+  private renderContext: BarContext[] | undefined;
 
   constructor(private readonly client: BackendClient) {
     this.unsub = client.subscribe((msg) => {
-      if (msg.type !== 'batch') return;
-      if (msg.epoch !== this.epoch) return;
-      const barBeats = 4;
-      const firstBar = Math.round(msg.batch.startBeat / barBeats);
-      const lastBar = Math.round(msg.batch.endBeat / barBeats);
-      for (let bar = firstBar; bar < lastBar; bar++) {
-        if (!barInBatch(msg.batch, bar)) continue;
-        this.buffer.set(bar, batchForSingleBar(msg.batch, bar));
+      if (msg.type === 'batch') {
+        if (msg.epoch !== this.epoch) return;
+        const barBeats = 4;
+        const firstBar = Math.round(msg.batch.startBeat / barBeats);
+        const lastBar = Math.round(msg.batch.endBeat / barBeats);
+        for (let bar = firstBar; bar < lastBar; bar++) {
+          if (!barInBatch(msg.batch, bar)) continue;
+          this.buffer.set(bar, batchForSingleBar(msg.batch, bar));
+        }
+        useStore.getState().setBackend({ latencyMs: client.latencyMs });
+        return;
       }
-      useStore.getState().setBackend({ latencyMs: client.latencyMs });
+      if (msg.type === 'pong' && msg.msPerBar !== undefined) {
+        useStore.getState().setBackend({ msPerBar: msg.msPerBar });
+      }
     });
+  }
+
+  setRenderContext(ctx: BarContext[] | undefined): void {
+    this.renderContext = ctx;
   }
 
   bindConnection(connected: boolean): void {
@@ -59,6 +77,10 @@ export class RemoteEngine implements ComposerEngine {
 
   setEngineId(id: string): void {
     this.engineId = id;
+  }
+
+  getEngineId(): string {
+    return this.engineId;
   }
 
   hasBar(bar: number): boolean {
@@ -79,6 +101,7 @@ export class RemoteEngine implements ComposerEngine {
     this.lastParams = { ...params, seed: this.seed };
     this.buffer.clear();
     this.highestRequested = -1;
+    this.renderContext = undefined;
     this.epoch += 1;
     if (this.connected) {
       this.client.send({
@@ -127,7 +150,7 @@ export class RemoteEngine implements ComposerEngine {
 
     let needFrom = -1;
     let needCount = 0;
-    for (let i = 0; i < PREFETCH_AHEAD; i++) {
+    for (let i = 0; i < this.prefetchAhead; i++) {
       const bar = fromBar + i;
       if (this.buffer.has(bar)) continue;
       if (needFrom < 0) needFrom = bar;
@@ -136,6 +159,11 @@ export class RemoteEngine implements ComposerEngine {
     if (needCount === 0 || needFrom < 0) return;
     if (needFrom + needCount - 1 <= this.highestRequested && this.buffer.has(needFrom)) return;
 
+    const ctx = this.renderContext?.filter((c) => c.bar >= needFrom && c.bar < needFrom + needCount);
+    if (this.engineId === 'py-neural-layers') {
+      if (!ctx || ctx.length < needCount) return;
+    }
+
     this.highestRequested = Math.max(this.highestRequested, needFrom + needCount - 1);
     this.client.send({
       type: 'render',
@@ -143,6 +171,7 @@ export class RemoteEngine implements ComposerEngine {
       fromBar: needFrom,
       count: Math.min(needCount, 16),
       params: p,
+      context: ctx,
     });
   }
 
@@ -153,7 +182,8 @@ export class RemoteEngine implements ComposerEngine {
       params.energy !== this.lastParams.energy ||
       params.complexity !== this.lastParams.complexity ||
       params.variation !== this.lastParams.variation ||
-      params.tempo !== this.lastParams.tempo;
+      params.tempo !== this.lastParams.tempo ||
+      !vibeEqual(params.vibe, this.lastParams.vibe);
     if (!changed) return;
     for (const bar of [...this.buffer.keys()]) {
       if (bar > playbackBar + KEEP_BARS) this.buffer.delete(bar);

@@ -85,7 +85,8 @@ def create_app() -> FastAPI:
         params = body.params.to_dict()
         seed = body.seed & 0xFFFFFFFF
         engine.init(seed, {**params, "seed": seed})
-        return engine.render_bars(body.fromBar, body.bars, params)
+        ctx = [c.model_dump() for c in body.context] if body.context else None
+        return engine.render_bars(body.fromBar, body.bars, params, context=ctx)
 
     @app.websocket("/ws")
     async def websocket_endpoint(ws: WebSocket) -> None:

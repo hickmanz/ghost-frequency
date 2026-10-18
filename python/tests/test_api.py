@@ -85,7 +85,7 @@ def test_ws_round_trip(client):
         ws.send_json(
             {
                 "type": "hello",
-                "protocol": 1,
+                "protocol": 2,
                 "token": "test-token-fixed",
                 "engineId": "py-markov",
                 "seed": 7,
@@ -105,7 +105,7 @@ def test_ws_bad_token(client):
         ws.send_json(
             {
                 "type": "hello",
-                "protocol": 1,
+                "protocol": 2,
                 "token": "wrong",
                 "engineId": "py-markov",
                 "seed": 1,

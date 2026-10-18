@@ -1,7 +1,7 @@
 import * as Tone from 'tone';
 import type { LayerId } from '@shared/index';
 import { faderToGain, layerAutomationGain } from './mapping';
-import { rampParam, type Instrument } from './instruments/instrument';
+import { glideParam, rampParam, type Instrument } from './instruments/instrument';
 
 /** Static pan per layer (instruments are already stereo; keep the centre-heavy layers centred). */
 const LAYER_PAN: Record<LayerId, number> = { pad: 0, arp: 0, bass: 0, lead: 0.06, drums: 0, texture: 0, bell: 0.15 };
@@ -50,11 +50,11 @@ export class ChannelStrip {
 
   /** Sound Lab mute/solo stage: `audible` false => silent (ramped, click-free). Independent of fader/automation. */
   setAudible(audible: boolean, time = Tone.now(), rampSeconds = 0.04): void {
-    rampParam(this.monitor.gain, audible ? 1 : 0, time, rampSeconds);
+    glideParam(this.monitor.gain, audible ? 1 : 0, time, rampSeconds);
   }
 
   private applyFader(time: number, rampSeconds: number): void {
-    rampParam(this.fader.gain, faderToGain(this.faderValue), time, rampSeconds);
+    glideParam(this.fader.gain, faderToGain(this.faderValue), time, rampSeconds);
   }
 
   /** 'layer.gain.<layer>' automation */
@@ -69,7 +69,7 @@ export class ChannelStrip {
   }
 
   setGate(open: boolean, time: number, rampSeconds: number): void {
-    rampParam(this.gate.gain, open ? 1 : 0, time, rampSeconds);
+    glideParam(this.gate.gain, open ? 1 : 0, time, rampSeconds);
   }
 
   /** Send gains are base(mood) * bus multiplier (send.reverb/send.delay automation). */

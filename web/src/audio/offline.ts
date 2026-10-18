@@ -3,7 +3,7 @@ import type { EventBatch, MixerParams, MoodId } from '@shared/index';
 import { AudioGraph } from './graph';
 import { TempoMap, clampBpm, secondsPerBeat } from './mapping';
 import { Scheduler, TEMPO_RAMP_BEATS, type SchedulerHost } from './scheduler';
-import { loadDrumSamples } from './samples';
+import { splitDrumKit } from './presets';
 
 export { audioBufferToWav } from './wav';
 
@@ -40,16 +40,17 @@ export async function renderOffline(
   }
   const duration = tm.beatToSeconds(totalBeats) + OFFLINE_TAIL_SECONDS;
 
-  const samples = await loadDrumSamples(); // never rejects; {} if absent => synth drums
-
   const rendered = await Tone.Offline((ctx) => {
     // everything below runs synchronously against the offline context (global context is swapped by Tone.Offline)
     const graph = new AudioGraph({ mood, mixer, analysis: false });
-    graph.setDrumSamples(samples);
     const host: SchedulerHost = {
       onNote: (ev, time, dur) => graph.trigger(ev.layer, ev.midi, dur, time, ev.vel),
       onAutomation: (ev, time, ramp) => graph.automate(ev.target, ev.value, time, ramp),
       onTempo: (bpm, time, ramp) => graph.setTempo(bpm, time, ramp),
+      onPalette: (ev) => {
+        const { kit, tune } = splitDrumKit(ev.overrides);
+        if (kit !== undefined) graph.setDrumKit(kit, tune);
+      },
     };
     const transport = ctx.transport;
     transport.bpm.value = bpm0;

@@ -37,8 +37,8 @@ export function PresetsPanel() {
 
   const save = (e: FormEvent) => {
     e.preventDefault();
-    const { params, mixer } = useStore.getState();
-    const preset = makePreset(name, params, mixer);
+    const { params, mixer, tone, chaos, pins, tuning } = useStore.getState();
+    const preset = makePreset(name, params, mixer, Date.now(), { tone, chaos, pins, tuning });
     if (!preset) return;
     commit(upsertPreset(presets, preset));
     setName('');
@@ -47,7 +47,13 @@ export function PresetsPanel() {
 
   const load = (p: Preset) => {
     const playingSeed = useStore.getState().params.seed;
-    useStore.getState().replaceAll(p.params, p.mixer);
+    const st = useStore.getState();
+    st.replaceAll(p.params, p.mixer);
+    if (p.params.steer) st.setSteer(p.params.steer);
+    if (p.tone) st.setTone(p.tone);
+    if (p.chaos) st.setChaos(p.chaos);
+    if (p.tuning) st.replaceTuning(p.tuning);
+    if (p.pins) useStore.setState({ pins: { ...p.pins } });
     if (p.params.seed !== playingSeed) void regenerateWithSeed(p.params.seed);
     notify(`Loaded "${p.name}".`);
   };

@@ -15,6 +15,7 @@ import {
 import { layerOn, segmentAt } from '../plan';
 import { chance, jitter, stream } from '../rng';
 import { clashesWithChord, mod12, snapToScale, type RealChord } from '../theory';
+import { resolvedSteer } from '../steer';
 import { BEATS_PER_BAR, energyAt, liveMood, note, type LayerContext } from './context';
 
 const SECTION_LEAD_BASE: Record<SectionName, number> = {
@@ -52,7 +53,8 @@ export function fitToChord(midi: number, chord: RealChord, force: boolean): numb
 function phraseProbability(ctx: LayerContext, startRel: number, slotMult: number): number {
   const mood = liveMood(ctx);
   const e = energyAt(ctx, ctx.plan.startBar + startRel);
-  const p = SECTION_LEAD_BASE[ctx.plan.name] * mood.lead.activity * (0.45 + 0.9 * e) * slotMult;
+  const lead = resolvedSteer(ctx.params).lead;
+  const p = SECTION_LEAD_BASE[ctx.plan.name] * mood.lead.activity * (0.35 + 0.75 * e + 0.35 * lead) * slotMult;
   return Math.min(0.92, p);
 }
 
@@ -69,7 +71,10 @@ function buildPhrase(ctx: LayerContext, block: number, off: number): NoteEvent[]
   const devKey = ctx.develop
     ? `:${plan.progression.chords.map((c) => c.label).join('.')}:${plan.lengthBars}:${plan.pivot?.bars ?? 0}`
     : '';
-  const cacheKey = `lead:${plan.index}:${block}:${off}${devKey}`;
+  const steer = resolvedSteer(params);
+  const eBucket = Math.floor(energyAt(ctx, plan.startBar + startRel) * 4);
+  const lBucket = Math.floor(steer.lead * 4);
+  const cacheKey = `lead:${plan.index}:${block}:${off}:${eBucket}:${lBucket}${devKey}`;
   const cached = ctx.cache.get(cacheKey) as NoteEvent[] | undefined;
   if (cached) return cached;
 
@@ -82,7 +87,7 @@ function buildPhrase(ctx: LayerContext, block: number, off: number): NoteEvent[]
   if (!layerOn(plan, 'lead', startRel)) return store();
 
   const slotMult = off === 0 ? 1 : off === 4 ? 0.85 : 0.28;
-  if ((off === 2 || off === 6) && (params.complexity < 0.45 || energyAt(ctx, plan.startBar + startRel) < 0.55)) {
+  if ((off === 2 || off === 6) && (steer.colour < 0.45 || energyAt(ctx, plan.startBar + startRel) < 0.55)) {
     return store();
   }
   const rng = stream(ctx.seed, 'lead', plan.index, block, off);

@@ -10,14 +10,23 @@ import { createRenderer } from './audio/toneRenderer';
 import { Conductor } from './engines/conductor';
 import { createEngineFactory } from './services/backendService';
 import { loadBackend, startBackendPersistence } from './services/backendPersist';
-import { listBrowserEngines, normalizeBrowserEngineId } from './engines/registry';
+import { DEFAULT_BROWSER_ENGINE_ID, listBrowserEngines, normalizeBrowserEngineId } from './engines/registry';
 import { App } from './ui/App';
+import { startDirectorModulator } from './services/director/modulator';
+import { randomSeed } from './ui/uiState';
 import './styles/global.css';
 
 // Restore last-used params/mixer (validated + clamped) BEFORE anything subscribes to the store,
 // so the Conductor starts from the user's previous settings.
 const last = loadLast();
-if (last) useStore.getState().replaceAll(last.params, last.mixer);
+if (last) {
+  useStore.getState().replaceAll(last.params, last.mixer);
+  if (last.tone) useStore.getState().setTone(last.tone);
+  if (last.chaos) useStore.getState().setChaos(last.chaos);
+  if (last.steer) useStore.getState().setSteer(last.steer);
+}
+// New composition each visit; sliders/mood/tuning still come from last session.
+useStore.getState().setParams({ seed: randomSeed() });
 
 // Restore Sound Lab tuning (per-mood overrides) the same way, before the Conductor reads the store.
 const savedTuning = loadTuning();
@@ -31,14 +40,14 @@ if (savedBackend) {
     mode,
     engineId:
       mode === 'browser'
-        ? normalizeBrowserEngineId(savedBackend.engineId ?? 'local-js')
+        ? normalizeBrowserEngineId(savedBackend.engineId ?? DEFAULT_BROWSER_ENGINE_ID)
         : (savedBackend.engineId ?? 'py-markov'),
     engines: mode === 'browser' ? listBrowserEngines() : useStore.getState().backend.engines,
   });
 }
 
 // Persist params/mixer and tuning to localStorage (debounced 500ms) and flush on tab close.
-const persistence = startPersistence(useStore);
+const persistence = startPersistence(useStore as import('./services/presets').PersistableStore);
 const tuningPersistence = startTuningPersistence(useStore);
 const backendPersistence = startBackendPersistence(useStore);
 window.addEventListener('pagehide', () => {
@@ -51,6 +60,7 @@ window.addEventListener('pagehide', () => {
 const renderer = createRenderer();
 const conductor = new Conductor(renderer, createEngineFactory());
 setController(conductor);
+startDirectorModulator();
 setFeedSource({
   getBeat: () => renderer.getBeat(),
   getBpmAt: (beat) => conductor.feed.getBpmAt(beat),

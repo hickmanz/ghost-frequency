@@ -1,16 +1,18 @@
 import * as Tone from 'tone';
-import { DEFAULT_MIXER, type EventBatch, type LayerId, type MixerParams, type MoodId } from '@shared/index';
+import { DEFAULT_MIXER, type EventBatch, type LayerId, type MixerParams, type MoodId, type ToneParams } from '@shared/index';
 import type { AudioRenderer } from './types';
 import { AudioGraph } from './graph';
 import { Scheduler, type SchedulerHost } from './scheduler';
-import { loadDrumSamples } from './samples';
-import { MOOD_RAMP_SECONDS, setTuningOverrides } from './presets';
+import { MOOD_RAMP_SECONDS, setSongPalette, setTuningOverrides, splitDrumKit } from './presets';
+import { brightToMasterFilter } from './mapping';
 
 const PAUSE_FADE = 0.08;
 /** Ramp (s) of live Sound Lab tuning changes: short enough to feel immediate, long enough to be click-free. */
 const TUNING_RAMP_SECONDS = 0.1;
 /** Coalescing window (ms) for setTuning(): at most one re-apply per ~frame while a slider is dragged. */
 const TUNING_COALESCE_MS = 16;
+
+const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 export interface RendererDebugStats {
   /** Transport events scheduled but not yet fired */
@@ -22,7 +24,9 @@ export interface RendererDebugStats {
   aheadBeats: number;
   /** exceptions swallowed inside event callbacks */
   callbackErrors: number;
-  drumSamples: string[];
+  /** active song drum kit (null = mood drums) and its tuning in semitones */
+  drumKit: string | null;
+  drumTune: number;
 }
 
 /** Tone's global context is replaced at most once (a second renderer instance must not dispose the first one's). */
@@ -86,14 +90,14 @@ export class ToneRenderer implements AudioRenderer {
         onNote: (ev, time, dur) => graph.trigger(ev.layer, ev.midi, dur, time, ev.vel),
         onAutomation: (ev, time, ramp) => graph.automate(ev.target, ev.value, time, ramp),
         onTempo: (bpm, time, ramp) => graph.setTempo(bpm, time, ramp),
+        onPalette: (ev) => {
+          const { kit, tune, rest } = splitDrumKit(ev.overrides);
+          if (kit !== undefined) graph.setDrumKit(kit, tune);
+          setSongPalette(this.mood, rest);
+          graph.retune(TUNING_RAMP_SECONDS);
+        },
       };
       this.scheduler = new Scheduler(Tone.getTransport(), host);
-      // sample loading is non-blocking and never fails start(): missing files => synthesized drums
-      void loadDrumSamples()
-        .then((set) => {
-          if (!this.disposed) graph.setDrumSamples(set);
-        })
-        .catch(() => undefined);
     }
     const sched = this.scheduler!;
     for (const b of this.backlog) sched.schedule(b);
@@ -128,6 +132,29 @@ export class ToneRenderer implements AudioRenderer {
       return;
     }
     this.scheduler.schedule(batch);
+  }
+
+  cancelFrom(beat: number): void {
+    this.scheduler?.cancelFrom(beat);
+  }
+
+  seekToBeat(beat: number): void {
+    this.scheduler?.seekToBeat(beat);
+    const g = this.graph;
+    if (g) {
+      const t = Tone.now();
+      g.releaseAll(t + 0.06);
+    }
+  }
+
+  applyToneMacros(tone: ToneParams): void {
+    const g = this.graph;
+    if (!g) return;
+    const t = Tone.now();
+    g.automate('master.filter', brightToMasterFilter(tone.bright, tone.crush), t, 0.12);
+    g.automate('send.reverb', tone.space, t, 0.12);
+    g.automate('send.delay', tone.space * 0.85 + tone.wow * 0.08, t, 0.12);
+    g.automate('texture.noise', clamp01(tone.grit * 0.55 + tone.crush * 0.45), t, 0.12);
   }
 
   reset(fadeSeconds = 1.2): Promise<void> {
@@ -311,7 +338,8 @@ export class ToneRenderer implements AudioRenderer {
       beat: this.getBeat(),
       aheadBeats: this.getScheduledAheadBeats(),
       callbackErrors: s ? s.errorCount : 0,
-      drumSamples: g ? g.instruments.drums.getLoadedSamples() : [],
+      drumKit: g ? g.instruments.drums.getKit().kit : null,
+      drumTune: g ? g.instruments.drums.getKit().tune : 0,
     };
   }
 

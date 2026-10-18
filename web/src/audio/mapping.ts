@@ -208,7 +208,24 @@ export function masterFilterHz(v: number, sampleRate = 44100): number {
   return safeCutoff(x >= 0.999 ? MASTER_FILTER_MAX_HZ : hz, sampleRate);
 }
 
+/**
+ * Tone "Bright" + "Crush" macros -> master.filter 0..1. Bright >= ~0.5 is fully open; only the lower half
+ * darkens (bright 0 ~ 3 kHz). Crush trims a little off the top.
+ */
+export function brightToMasterFilter(bright: number, crush: number): number {
+  return clamp01(0.6 + clamp01(bright) * 0.8 - clamp01(crush) * 0.15);
+}
+
 /** Soft-clip saturation curve (tanh), unity small-signal gain, `drive` >= 0 (0.5 gentle .. 3 strong). */
+/**
+ * Parallel drum saturation mix for a kit drive (1 = clean .. ~3.5 = crunchy): the wet (shaped) share and the dry
+ * share. Dry never drops below ~0.75, so kick/snare transients stay clean and the crunch is blended in, not forced.
+ */
+export function drumSaturationMix(drive: number): { wet: number; dry: number } {
+  const wet = Math.min(0.45, Math.max(0, (drive - 1) * 0.18));
+  return { wet, dry: 1 - wet * 0.55 };
+}
+
 export function saturationCurve(drive: number, length = 2048): Float32Array {
   const d = Math.max(0.01, drive);
   const curve = new Float32Array(length);

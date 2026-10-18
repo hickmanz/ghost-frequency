@@ -5,12 +5,16 @@
 import {
   DEFAULT_MIXER,
   DEFAULT_PARAMS,
+  DEFAULT_STEER,
+  DEFAULT_VIBE,
   LAYER_IDS,
   MOOD_IDS,
   type GenerationParams,
   type MixerParams,
   type MoodId,
   type Preset,
+  type SteerParams,
+  type VibeParams,
 } from '@shared/index';
 import type { TuningOverrides } from '../tuning/schema';
 
@@ -72,6 +76,25 @@ function unit(raw: unknown, fallback: number): number {
   return isFiniteNumber(raw) ? clamp01(raw) : fallback;
 }
 
+export function sanitizeVibe(raw: unknown, fallback: VibeParams = DEFAULT_VIBE): VibeParams {
+  if (!isRecord(raw)) return { ...fallback };
+  return {
+    brightness: unit(raw.brightness, fallback.brightness),
+    tension: unit(raw.tension, fallback.tension),
+    density: unit(raw.density, fallback.density),
+    groove: unit(raw.groove, fallback.groove),
+  };
+}
+
+export function sanitizeSteer(raw: unknown, fallback: SteerParams = DEFAULT_STEER): SteerParams {
+  if (!isRecord(raw)) return { ...fallback };
+  const out = { ...fallback };
+  for (const k of Object.keys(fallback) as (keyof SteerParams)[]) {
+    out[k] = unit(raw[k], fallback[k]);
+  }
+  return out;
+}
+
 /**
  * Validate + clamp a params object. Unknown/invalid fields fall back to defaults.
  * Returns null if `raw` is not an object at all.
@@ -89,6 +112,9 @@ export function sanitizeParams(raw: unknown, fallback: GenerationParams = DEFAUL
     variation: unit(raw.variation, fallback.variation),
     tempo,
     seed: isFiniteNumber(raw.seed) ? toSeed(raw.seed) : fallback.seed,
+    vibe: sanitizeVibe(raw.vibe, fallback.vibe ?? DEFAULT_VIBE),
+    contrast: unit(raw.contrast, fallback.contrast ?? DEFAULT_PARAMS.contrast ?? 0.5),
+    steer: sanitizeSteer(raw.steer, fallback.steer ?? DEFAULT_STEER),
   };
 }
 
@@ -110,18 +136,27 @@ export function sanitizeName(raw: unknown): string | null {
 /** Validate a single preset entry. Returns null for malformed entries. */
 export function validatePreset(raw: unknown): Preset | null {
   if (!isRecord(raw)) return null;
-  if (raw.version !== 1) return null;
+  const ver = raw.version;
+  if (ver !== 1 && ver !== 2) return null;
   const name = sanitizeName(raw.name);
   const params = sanitizeParams(raw.params);
   const mixer = sanitizeMixer(raw.mixer);
   if (!name || !params || !mixer) return null;
-  return {
-    version: 1,
+  const base: Preset = {
+    version: ver,
     name,
     params,
     mixer,
     savedAt: isFiniteNumber(raw.savedAt) ? raw.savedAt : 0,
   };
+  if (ver === 2) {
+    if (isRecord(raw.tone)) base.tone = raw.tone as Preset['tone'];
+    if (isRecord(raw.chaos)) base.chaos = raw.chaos as Preset['chaos'];
+    if (raw.mode === 'lab' || raw.mode === 'radio') base.mode = raw.mode;
+    if (isRecord(raw.pins)) base.pins = raw.pins as Preset['pins'];
+    if (isRecord(raw.tuning)) base.tuning = raw.tuning as Preset['tuning'];
+  }
+  return base;
 }
 
 /** Build a preset from live state (deep-copies and sanitizes). Returns null if name is empty. */
@@ -130,15 +165,17 @@ export function makePreset(
   params: GenerationParams,
   mixer: MixerParams,
   now: number = Date.now(),
+  extra?: Pick<Preset, 'tone' | 'chaos' | 'pins' | 'mode' | 'tuning'>,
 ): Preset | null {
   const n = sanitizeName(name);
   if (!n) return null;
   return {
-    version: 1,
+    version: 2,
     name: n,
     params: sanitizeParams(params) ?? { ...DEFAULT_PARAMS },
     mixer: sanitizeMixer(mixer) ?? { ...DEFAULT_MIXER },
     savedAt: now,
+    ...extra,
   };
 }
 
@@ -217,6 +254,10 @@ export function savePresets(list: readonly Preset[], storage: StorageLike | null
 export interface LastUsed {
   params: GenerationParams;
   mixer: MixerParams;
+  tone?: import('@shared/index').ToneParams;
+  chaos?: import('@shared/index').ChaosParams;
+  mode?: import('@shared/index').AppMode;
+  steer?: import('@shared/index').SteerParams;
 }
 
 /** Parse the persisted last-used blob (pure). */
@@ -232,11 +273,16 @@ export function parseLast(text: string | null | undefined): LastUsed | null {
   const params = sanitizeParams(data.params);
   const mixer = sanitizeMixer(data.mixer);
   if (!params || !mixer) return null;
-  return { params, mixer };
+  const out: LastUsed = { params, mixer };
+  if (isRecord(data.tone)) out.tone = data.tone as LastUsed['tone'];
+  if (isRecord(data.chaos)) out.chaos = data.chaos as LastUsed['chaos'];
+  if (data.mode === 'lab' || data.mode === 'radio') out.mode = data.mode;
+  if (isRecord(data.steer)) out.steer = sanitizeSteer(data.steer);
+  return out;
 }
 
-export function serializeLast(params: GenerationParams, mixer: MixerParams): string {
-  return JSON.stringify({ version: 1, params, mixer });
+export function serializeLast(params: GenerationParams, mixer: MixerParams, extra?: Omit<LastUsed, 'params' | 'mixer'>): string {
+  return JSON.stringify({ version: 2, params, mixer, ...extra });
 }
 
 export function loadLast(storage: StorageLike | null = defaultStorage()): LastUsed | null {
@@ -252,10 +298,11 @@ export function saveLast(
   params: GenerationParams,
   mixer: MixerParams,
   storage: StorageLike | null = defaultStorage(),
+  extra?: Omit<LastUsed, 'params' | 'mixer'>,
 ): boolean {
   if (!storage) return false;
   try {
-    storage.setItem(LAST_KEY, serializeLast(params, mixer));
+    storage.setItem(LAST_KEY, serializeLast(params, mixer, extra));
     return true;
   } catch {
     return false;
@@ -300,6 +347,9 @@ export function debounce(fn: () => void, ms: number): Debounced {
 interface Snapshot {
   params: GenerationParams;
   mixer: MixerParams;
+  tone?: import('@shared/index').ToneParams;
+  chaos?: import('@shared/index').ChaosParams;
+  steer?: import('@shared/index').SteerParams;
 }
 
 /** Structural subset of the zustand store hook used by startPersistence. */
@@ -318,10 +368,10 @@ export function startPersistence(
 ): { stop(): void; flush(): void } {
   const d = debounce(() => {
     const s = store.getState();
-    saveLast(s.params, s.mixer, storage);
+    saveLast(s.params, s.mixer, storage, { tone: s.tone, chaos: s.chaos, steer: s.steer });
   }, ms);
   const unsub = store.subscribe((s, prev) => {
-    if (s.params !== prev.params || s.mixer !== prev.mixer) d.call();
+    if (s.params !== prev.params || s.mixer !== prev.mixer || s.tone !== prev.tone || s.chaos !== prev.chaos || s.steer !== prev.steer) d.call();
   });
   return {
     stop() {

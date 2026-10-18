@@ -8,6 +8,7 @@ import { BASS_HI, BASS_LO, bassRootMidi } from '../harmony';
 import { chordSegments, layerOn, segmentIndexAt, type PlanSegment } from '../plan';
 import { chance, int, jitter, stream } from '../rng';
 import { midiToScaleIndex, mod12, scaleIndexToMidi, type RealChord } from '../theory';
+import { layerComplexity, resolvedSteer } from '../steer';
 import { BEATS_PER_BAR, energyAt, liveMood, note, type LayerContext } from './context';
 
 type Role = 'r' | 'o' | 'f';
@@ -93,7 +94,7 @@ export function renderBass(ctx: LayerContext): NoteEvent[] {
     const pedalNow = plan.bassPedal && !seg.isPivot && pedalConsonant(plan.key.tonic, seg.chord);
     if (isLast && nextSeg && !pedalNow) {
       const passRng = stream(ctx.seed, 'bass', 'pass', plan.index, rel);
-      if (passRng.next() < 0.2 + 0.5 * params.complexity) {
+      if (passRng.next() < 0.2 + 0.5 * layerComplexity(params)) {
         const nextR = bassRootMidi(nextSeg.chord.rootPc, R);
         if (nextR !== R) {
           const key = si + 1 < segs.length ? plan.key : (next ?? plan).key;
@@ -118,7 +119,7 @@ export function renderBass(ctx: LayerContext): NoteEvent[] {
     } else {
       let pat: readonly Hit[];
       if (tier === 'sync') pat = SYNC_PATTERNS[Math.floor(patRng.next() * SYNC_PATTERNS.length)]!;
-      else if (e > 0.85 && params.complexity > 0.55 && chance(patRng, 0.5)) pat = DRIVE_16;
+      else if (e > 0.85 && layerComplexity(params) > 0.55 && chance(patRng, 0.5)) pat = DRIVE_16;
       else pat = DRIVE_PATTERNS[Math.floor(patRng.next() * DRIVE_PATTERNS.length)]!;
       const flip = chance(rng, params.variation * 0.3) ? int(rng, 1, 6) : -1;
       pat.forEach(([beat, dur, role], i) => {

@@ -38,7 +38,22 @@ export interface ChordSpec {
  * Drum layer MIDI mapping (General MIDI subset):
  * 36 kick, 38 snare, 39 clap, 42 closed hat, 46 open hat, 49 crash/cymbal-ish, 43 low tom.
  */
-export const DRUM = { kick: 36, snare: 38, clap: 39, hatClosed: 42, hatOpen: 46, crash: 49, tom: 43 } as const;
+export const DRUM = {
+  kick: 36,
+  rim: 37,
+  snare: 38,
+  clap: 39,
+  hatClosed: 42,
+  tom: 43,
+  hatOpen: 46,
+  crash: 49,
+  ride: 51,
+  shaker: 70,
+} as const;
+
+/** Synth drum kits; a song picks one by index ('drums.kit' in its palette overrides). */
+export const DRUM_KIT_IDS = ['linn', 'dmx', 'tr808', 'tr909', 'simmons', 'tape', 'soft'] as const;
+export type DrumKitId = (typeof DRUM_KIT_IDS)[number];
 
 export interface NoteEvent {
   kind: 'note';
@@ -92,6 +107,19 @@ export interface SectionEvent {
   chord?: ChordSpec;
   /** 0..1 effective energy for this section */
   energy: number;
+  songIndex?: number;
+  songTitle?: string;
+  /** 0..1 position through the current song */
+  songProgress?: number;
+}
+
+/** Per-song timbre variant; merged under user Sound Lab overrides at playback. */
+export interface PaletteEvent {
+  kind: 'palette';
+  beat: number;
+  songIndex: number;
+  paletteId: string;
+  overrides: Record<string, number>;
 }
 
 /** Reserved for future external audio generation (ML textures etc). Renderers may ignore in v1. */
@@ -104,7 +132,7 @@ export interface AudioClipEvent {
   gain?: number;
 }
 
-export type MusicEvent = NoteEvent | AutomationEvent | SectionEvent | AudioClipEvent;
+export type MusicEvent = NoteEvent | AutomationEvent | SectionEvent | AudioClipEvent | PaletteEvent;
 
 /** Contiguous chunk of music covering [startBeat, endBeat). Batches are produced in order, no gaps. */
 export interface EventBatch {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_MIXER, DEFAULT_PARAMS, type GenerationParams, type MixerParams } from '@shared/index';
+import { DEFAULT_MIXER, DEFAULT_PARAMS, DEFAULT_STEER, DEFAULT_VIBE, type GenerationParams, type MixerParams } from '@shared/index';
 import {
   LAST_KEY,
   MAX_PRESETS,
@@ -44,8 +44,22 @@ const throwingStorage: StorageLike = {
 
 describe('sanitizeParams', () => {
   it('passes through valid params', () => {
-    const p: GenerationParams = { mood: 'dark', energy: 0.2, complexity: 0.9, variation: 0, tempo: 100, seed: 42 };
-    expect(sanitizeParams(p)).toEqual(p);
+    const p: GenerationParams = {
+      mood: 'dark',
+      energy: 0.2,
+      complexity: 0.9,
+      variation: 0,
+      tempo: 100,
+      seed: 42,
+      vibe: { ...DEFAULT_VIBE },
+      contrast: 0.5,
+    };
+    expect(sanitizeParams(p)).toEqual(sanitizeParams({ ...p, steer: p.steer }));
+  });
+
+  it('migrates v1 params without vibe to defaults', () => {
+    const legacy = { mood: 'dark', energy: 0.5, complexity: 0.5, variation: 0.5, tempo: null, seed: 1 };
+    expect(sanitizeParams(legacy)?.vibe).toEqual(DEFAULT_VIBE);
   });
 
   it('clamps and repairs invalid fields', () => {
@@ -57,6 +71,9 @@ describe('sanitizeParams', () => {
       variation: DEFAULT_PARAMS.variation,
       tempo: 130,
       seed: 0xffffffff,
+      vibe: { ...DEFAULT_VIBE },
+      contrast: DEFAULT_PARAMS.contrast,
+      steer: { ...DEFAULT_STEER },
     });
   });
 
@@ -117,7 +134,8 @@ describe('presets', () => {
       { version: 1, name: 'noParams', mixer: good.mixer },
       { version: 1, name: 'noMixer', params: good.params },
     ]);
-    expect(parsePresets(text)).toEqual([good]);
+    const v2 = validatePreset({ version: 2, name: 'v2', params: good.params, mixer: good.mixer, savedAt: 1 });
+    expect(parsePresets(text)).toEqual([good, v2]);
     expect(parsePresets('{not json')).toEqual([]);
     expect(parsePresets(null)).toEqual([]);
   });

@@ -7,7 +7,7 @@
  *  - levelDb: static output trim of the instrument (before channel strip).
  *  - All cutoffs >= 80 Hz, all Q < 8, delay feedback < 0.6.
  */
-import type { LayerId, MoodId } from '@shared/index';
+import type { DrumKitId, LayerId, MoodId } from '@shared/index';
 import { TUNING_SCHEMA } from '../tuning/params';
 import type { TuningParam } from '../tuning/schema';
 
@@ -125,30 +125,129 @@ export interface LeadPreset {
   levelDb: number;
 }
 
+export type DrumNoise = 'white' | 'pink' | 'brown';
+
 export interface DrumPreset {
   kickHz: number;
   kickPitchOct: number;
   kickPitchDecay: number;
   kickDecay: number;
   kickDb: number;
+  /** beater click, dB relative to the kick */
+  kickClickDb: number;
   snareBodyHz: number;
+  /** tonal body, dB relative to the snare noise */
+  snareBodyDb: number;
   snareNoiseDecay: number;
+  snareNoise: DrumNoise;
   snareDb: number;
   /** gated-reverb-ish tail */
   snareTailDb: number;
   snareTailGate: number;
+  /** low-pass on the gated tail: higher = a brighter "tssh" */
+  snareTailHz: number;
+  /** bright white-noise "sizzle" on top of the snare (bypasses the bus ceiling) */
+  snareSizzleDb: number;
+  snareSizzleDecay: number;
   clapDb: number;
+  rimDb: number;
   hatDb: number;
   hatDecay: number;
   hatHpHz: number;
   openHatDb: number;
   openHatDecay: number;
+  rideDb: number;
+  shakerDb: number;
   tomDb: number;
   crashDb: number;
+  /** bus saturation amount (1 = clean, ~4 = crunchy) */
+  drive: number;
   /** low-pass on drum bus */
   ceilingHz: number;
   levelDb: number;
 }
+
+type DrumShapeKey =
+  | 'kickHz' | 'kickPitchOct' | 'kickPitchDecay' | 'kickDecay' | 'snareBodyHz' | 'snareNoiseDecay' | 'snareNoise'
+  | 'snareTailGate' | 'snareTailHz' | 'snareSizzleDecay' | 'hatDecay' | 'hatHpHz' | 'openHatDecay' | 'drive';
+type DrumDbKey =
+  | 'kickDb' | 'kickClickDb' | 'snareDb' | 'snareBodyDb' | 'snareTailDb' | 'snareSizzleDb' | 'clapDb' | 'rimDb' | 'hatDb' | 'openHatDb'
+  | 'rideDb' | 'shakerDb' | 'tomDb' | 'crashDb' | 'levelDb';
+
+/** A drum machine character: absolute sound shape, dB offsets on the mood levels, and a ceiling multiplier. */
+export interface DrumKit {
+  shape: Partial<Pick<DrumPreset, DrumShapeKey>>;
+  db: Partial<Record<DrumDbKey, number>>;
+  ceilingMul?: number;
+}
+
+export const DRUM_KITS: Record<DrumKitId, DrumKit> = {
+  // LinnDrum: punchy, short kick, bright cracking snare with a gated tail
+  linn: {
+    shape: {
+      kickHz: 55, kickPitchOct: 1.8, kickPitchDecay: 0.03, kickDecay: 0.3, snareBodyHz: 200, snareNoiseDecay: 0.16,
+      snareNoise: 'white', snareTailGate: 0.22, snareTailHz: 7500, snareSizzleDecay: 0.12, hatDecay: 0.045,
+      hatHpHz: 7000, openHatDecay: 0.28, drive: 1.6,
+    },
+    db: { snareTailDb: 3, snareSizzleDb: 4, clapDb: 1, kickClickDb: -2 },
+    ceilingMul: 1.1,
+  },
+  // Oberheim DMX: fat, crunchy snare, big gated room
+  dmx: {
+    shape: {
+      kickHz: 52, kickPitchOct: 2.2, kickPitchDecay: 0.04, kickDecay: 0.34, snareBodyHz: 180, snareNoiseDecay: 0.2,
+      snareNoise: 'white', snareTailGate: 0.26, snareTailHz: 7000, snareSizzleDecay: 0.14, hatDecay: 0.05,
+      hatHpHz: 6500, openHatDecay: 0.32, drive: 2.3,
+    },
+    db: { snareDb: 1, snareTailDb: 4, snareSizzleDb: 4, snareBodyDb: 1 },
+  },
+  // TR-808: long boomy sub kick, snappy snare, crisp hats, loud clap
+  tr808: {
+    shape: {
+      kickHz: 45, kickPitchOct: 1.4, kickPitchDecay: 0.06, kickDecay: 0.75, snareBodyHz: 240, snareNoiseDecay: 0.14,
+      snareNoise: 'white', snareTailGate: 0.1, snareSizzleDecay: 0.13, hatDecay: 0.04, hatHpHz: 8000,
+      openHatDecay: 0.42, drive: 1.5,
+    },
+    db: { kickDb: 1, snareTailDb: -8, snareSizzleDb: 5, clapDb: 3, kickClickDb: -10, rimDb: 2, snareBodyDb: 2 },
+  },
+  // TR-909: clicky punchy kick, noisy snare, bright hats and ride
+  tr909: {
+    shape: {
+      kickHz: 56, kickPitchOct: 2.6, kickPitchDecay: 0.035, kickDecay: 0.42, snareBodyHz: 210, snareNoiseDecay: 0.2,
+      snareNoise: 'white', snareTailGate: 0.14, snareSizzleDecay: 0.17, hatDecay: 0.05, hatHpHz: 7500,
+      openHatDecay: 0.36, drive: 2,
+    },
+    db: { kickClickDb: 4, snareSizzleDb: 6, hatDb: 2, openHatDb: 2, rideDb: 3 },
+    ceilingMul: 1.15,
+  },
+  // Simmons: pitched, zappy snare and big toms
+  simmons: {
+    shape: {
+      kickHz: 58, kickPitchOct: 2.8, kickPitchDecay: 0.05, kickDecay: 0.38, snareBodyHz: 260, snareNoiseDecay: 0.15,
+      snareNoise: 'pink', snareTailGate: 0.18, snareTailHz: 6500, hatDecay: 0.05, hatHpHz: 6800, openHatDecay: 0.3,
+      drive: 1.8,
+    },
+    db: { tomDb: 3, snareTailDb: 2, snareSizzleDb: 1, crashDb: 2, snareBodyDb: 3 },
+  },
+  // cassette-bounced machine: dark, saturated, soft hats
+  tape: {
+    shape: {
+      kickHz: 48, kickPitchOct: 1.6, kickPitchDecay: 0.045, kickDecay: 0.36, snareBodyHz: 175, snareNoiseDecay: 0.18,
+      snareNoise: 'pink', snareTailGate: 0.18, hatDecay: 0.05, hatHpHz: 5000, openHatDecay: 0.3, drive: 3.2,
+    },
+    db: { hatDb: -2, openHatDb: -2, kickClickDb: -4, snareSizzleDb: -4 },
+    ceilingMul: 0.65,
+  },
+  // soft: rounded, quiet, little click, for dreamy / space songs
+  soft: {
+    shape: {
+      kickHz: 50, kickPitchOct: 1.5, kickPitchDecay: 0.05, kickDecay: 0.32, snareBodyHz: 190, snareNoiseDecay: 0.14,
+      snareNoise: 'pink', snareTailGate: 0.12, hatDecay: 0.04, hatHpHz: 6200, openHatDecay: 0.28, drive: 1.1,
+    },
+    db: { kickDb: -2, snareDb: -3, clapDb: -3, snareTailDb: -6, snareSizzleDb: -5, kickClickDb: -6, levelDb: -1 },
+    ceilingMul: 0.9,
+  },
+};
 
 export interface TexturePreset {
   pinkDb: number;
@@ -232,10 +331,10 @@ const dreamy: MoodPreset = {
     vibratoAmount: 0.14, vibratoRate: 4.4, vibratoDelay: 0.85, vibratoFade: 1.9, chorusWet: 0.38, levelDb: -1,
   },
   drums: {
-    kickHz: 50, kickPitchOct: 2.0, kickPitchDecay: 0.04, kickDecay: 0.36, kickDb: -7,
-    snareBodyHz: 185, snareNoiseDecay: 0.17, snareDb: -15, snareTailDb: -28, snareTailGate: 0.18,
-    clapDb: -17, hatDb: -26, hatDecay: 0.055, hatHpHz: 5800, openHatDb: -28, openHatDecay: 0.32,
-    tomDb: -13, crashDb: -28, ceilingHz: 8500, levelDb: 5,
+    kickHz: 50, kickPitchOct: 2.0, kickPitchDecay: 0.04, kickDecay: 0.36, kickDb: -7, kickClickDb: -14,
+    snareBodyHz: 185, snareBodyDb: -4, snareNoiseDecay: 0.17, snareNoise: 'pink', snareDb: -15, snareTailDb: -28,
+    snareTailGate: 0.18, snareTailHz: 4200, snareSizzleDb: -27, snareSizzleDecay: 0.11, clapDb: -17, rimDb: -22, hatDb: -26, hatDecay: 0.055, hatHpHz: 5800, openHatDb: -28,
+    openHatDecay: 0.32, rideDb: -30, shakerDb: -29, tomDb: -13, crashDb: -28, drive: 1.4, ceilingHz: 8500, levelDb: 5,
   },
   texture: {
     pinkDb: -3, brownDb: -9, noiseCutoffMin: 300, noiseCutoffMax: 7000, noiseFilterDefault: 0.5,
@@ -247,7 +346,7 @@ const dreamy: MoodPreset = {
   fx: {
     reverbReturnDb: -3, reverbLpHz: 9000, reverbHpHz: 180, delayBeats: 0.75, delayFeedback: 0.42, delayLpHz: 3800,
     delayReturnDb: -3, delayToReverb: 0.35,
-    reverbSend: { pad: 0.55, arp: 0.5, bass: 0.05, lead: 0.52, drums: 0.28, texture: 0.5, bell: 0.62 },
+    reverbSend: { pad: 0.55, arp: 0.5, bass: 0.05, lead: 0.52, drums: 0.1, texture: 0.5, bell: 0.62 },
     delaySend: { pad: 0.1, arp: 0.5, bass: 0, lead: 0.4, drums: 0.05, texture: 0.1, bell: 0.35 },
   },
 };
@@ -273,10 +372,10 @@ const dark: MoodPreset = {
     vibratoAmount: 0.1, vibratoRate: 4.2, vibratoDelay: 0.9, vibratoFade: 2.0, chorusWet: 0.28, levelDb: -1,
   },
   drums: {
-    kickHz: 46, kickPitchOct: 2.3, kickPitchDecay: 0.045, kickDecay: 0.4, kickDb: -5,
-    snareBodyHz: 165, snareNoiseDecay: 0.18, snareDb: -14, snareTailDb: -30, snareTailGate: 0.16,
-    clapDb: -18, hatDb: -28, hatDecay: 0.058, hatHpHz: 5200, openHatDb: -30, openHatDecay: 0.32,
-    tomDb: -12, crashDb: -30, ceilingHz: 6200, levelDb: 5,
+    kickHz: 46, kickPitchOct: 2.3, kickPitchDecay: 0.045, kickDecay: 0.4, kickDb: -5, kickClickDb: -14,
+    snareBodyHz: 165, snareBodyDb: -4, snareNoiseDecay: 0.18, snareNoise: 'pink', snareDb: -14, snareTailDb: -30,
+    snareTailGate: 0.16, snareTailHz: 4200, snareSizzleDb: -28, snareSizzleDecay: 0.11, clapDb: -18, rimDb: -22, hatDb: -28, hatDecay: 0.058, hatHpHz: 5200, openHatDb: -30,
+    openHatDecay: 0.32, rideDb: -32, shakerDb: -31, tomDb: -12, crashDb: -30, drive: 2, ceilingHz: 6200, levelDb: 5,
   },
   texture: {
     pinkDb: -9, brownDb: -2, noiseCutoffMin: 150, noiseCutoffMax: 2500, noiseFilterDefault: 0.45,
@@ -288,7 +387,7 @@ const dark: MoodPreset = {
   fx: {
     reverbReturnDb: -5, reverbLpHz: 4800, reverbHpHz: 160, delayBeats: 1.0, delayFeedback: 0.38, delayLpHz: 2400,
     delayReturnDb: -5, delayToReverb: 0.3,
-    reverbSend: { pad: 0.4, arp: 0.3, bass: 0.03, lead: 0.4, drums: 0.24, texture: 0.4, bell: 0.5 },
+    reverbSend: { pad: 0.4, arp: 0.3, bass: 0.03, lead: 0.4, drums: 0.08, texture: 0.4, bell: 0.5 },
     delaySend: { pad: 0.05, arp: 0.3, bass: 0, lead: 0.3, drums: 0.04, texture: 0.05, bell: 0.28 },
   },
 };
@@ -314,10 +413,10 @@ const nostalgic: MoodPreset = {
     vibratoAmount: 0.12, vibratoRate: 4.5, vibratoDelay: 0.85, vibratoFade: 1.8, chorusWet: 0.34, levelDb: -1,
   },
   drums: {
-    kickHz: 52, kickPitchOct: 2.0, kickPitchDecay: 0.038, kickDecay: 0.32, kickDb: -6,
-    snareBodyHz: 195, snareNoiseDecay: 0.17, snareDb: -14, snareTailDb: -22, snareTailGate: 0.2,
-    clapDb: -16, hatDb: -24, hatDecay: 0.055, hatHpHz: 6000, openHatDb: -26, openHatDecay: 0.32,
-    tomDb: -12, crashDb: -27, ceilingHz: 9000, levelDb: 5,
+    kickHz: 52, kickPitchOct: 2.0, kickPitchDecay: 0.038, kickDecay: 0.32, kickDb: -6, kickClickDb: -14,
+    snareBodyHz: 195, snareBodyDb: -4, snareNoiseDecay: 0.17, snareNoise: 'pink', snareDb: -14, snareTailDb: -22,
+    snareTailGate: 0.2, snareTailHz: 4200, snareSizzleDb: -25, snareSizzleDecay: 0.11, clapDb: -16, rimDb: -20, hatDb: -24, hatDecay: 0.055, hatHpHz: 6000, openHatDb: -26,
+    openHatDecay: 0.32, rideDb: -28, shakerDb: -27, tomDb: -12, crashDb: -27, drive: 1.6, ceilingHz: 9000, levelDb: 5,
   },
   texture: {
     pinkDb: -4, brownDb: -10, noiseCutoffMin: 600, noiseCutoffMax: 8000, noiseFilterDefault: 0.5,
@@ -329,7 +428,7 @@ const nostalgic: MoodPreset = {
   fx: {
     reverbReturnDb: -5, reverbLpHz: 7000, reverbHpHz: 200, delayBeats: 0.75, delayFeedback: 0.4, delayLpHz: 3200,
     delayReturnDb: -3, delayToReverb: 0.3,
-    reverbSend: { pad: 0.35, arp: 0.3, bass: 0.03, lead: 0.38, drums: 0.32, texture: 0.3, bell: 0.48 },
+    reverbSend: { pad: 0.35, arp: 0.3, bass: 0.03, lead: 0.38, drums: 0.1, texture: 0.3, bell: 0.48 },
     delaySend: { pad: 0.08, arp: 0.45, bass: 0, lead: 0.36, drums: 0.05, texture: 0.05, bell: 0.3 },
   },
 };
@@ -355,10 +454,10 @@ const space: MoodPreset = {
     vibratoAmount: 0.16, vibratoRate: 4.0, vibratoDelay: 1.0, vibratoFade: 2.2, chorusWet: 0.42, levelDb: -1,
   },
   drums: {
-    kickHz: 48, kickPitchOct: 1.7, kickPitchDecay: 0.045, kickDecay: 0.38, kickDb: -11,
-    snareBodyHz: 175, snareNoiseDecay: 0.16, snareDb: -19, snareTailDb: -30, snareTailGate: 0.15,
-    clapDb: -21, hatDb: -32, hatDecay: 0.048, hatHpHz: 5500, openHatDb: -34, openHatDecay: 0.32,
-    tomDb: -17, crashDb: -32, ceilingHz: 7200, levelDb: 4,
+    kickHz: 48, kickPitchOct: 1.7, kickPitchDecay: 0.045, kickDecay: 0.38, kickDb: -11, kickClickDb: -14,
+    snareBodyHz: 175, snareBodyDb: -4, snareNoiseDecay: 0.16, snareNoise: 'pink', snareDb: -19, snareTailDb: -30,
+    snareTailGate: 0.15, snareTailHz: 4200, snareSizzleDb: -31, snareSizzleDecay: 0.1, clapDb: -21, rimDb: -26, hatDb: -32, hatDecay: 0.048, hatHpHz: 5500, openHatDb: -34,
+    openHatDecay: 0.32, rideDb: -34, shakerDb: -33, tomDb: -17, crashDb: -32, drive: 1.2, ceilingHz: 7200, levelDb: 4,
   },
   texture: {
     pinkDb: -6, brownDb: -5, noiseCutoffMin: 200, noiseCutoffMax: 5000, noiseFilterDefault: 0.5,
@@ -370,7 +469,7 @@ const space: MoodPreset = {
   fx: {
     reverbReturnDb: -1, reverbLpHz: 8000, reverbHpHz: 150, delayBeats: 1.5, delayFeedback: 0.45, delayLpHz: 3000,
     delayReturnDb: -3, delayToReverb: 0.5,
-    reverbSend: { pad: 0.8, arp: 0.6, bass: 0.07, lead: 0.58, drums: 0.22, texture: 0.7, bell: 0.7 },
+    reverbSend: { pad: 0.8, arp: 0.6, bass: 0.07, lead: 0.58, drums: 0.08, texture: 0.7, bell: 0.7 },
     delaySend: { pad: 0.2, arp: 0.5, bass: 0, lead: 0.48, drums: 0.03, texture: 0.3, bell: 0.4 },
   },
 };
@@ -385,6 +484,8 @@ export const PRESETS: Record<MoodId, MoodPreset> = { dreamy, dark, nostalgic, sp
 type Overrides = Record<string, number>;
 
 const overrideStore: Partial<Record<MoodId, Overrides>> = {};
+/** Per-song palette from composition; merged below user Sound Lab overrides. */
+const songPaletteStore: Partial<Record<MoodId, Overrides>> = {};
 const mergedCache: Partial<Record<MoodId, MoodPreset>> = {};
 let schemaIndex: Map<string, TuningParam> | null = null;
 let overrideVersion = 0;
@@ -531,6 +632,16 @@ export function setTuningOverrides(mood: MoodId, overrides: Overrides): void {
   overrideVersion++;
 }
 
+/** Composition palette for the active song (user overrides still win). */
+export function setSongPalette(mood: MoodId, overrides: Overrides): void {
+  if (!hasOwn(PRESETS, mood)) return;
+  const clean = sanitizeOverrides(overrides);
+  if (Object.keys(clean).length === 0) delete songPaletteStore[mood];
+  else songPaletteStore[mood] = clean;
+  delete mergedCache[mood];
+  overrideVersion++;
+}
+
 /** Currently active (sanitized) overrides for a mood. Do not mutate. */
 export function getTuningOverrides(mood: MoodId): Readonly<Overrides> {
   return overrideStore[mood] ?? EMPTY_OVERRIDES;
@@ -545,14 +656,40 @@ export function getTuningVersion(): number {
 /** Built-in preset deep-merged with the mood's overrides. Cached per mood; the returned object must not be mutated. */
 export function getPreset(mood: MoodId): MoodPreset {
   const m: MoodId = hasOwn(PRESETS, mood) ? mood : 'nostalgic';
-  const ov = overrideStore[m];
-  if (!ov) return PRESETS[m];
+  const songOv = songPaletteStore[m];
+  const userOv = overrideStore[m];
+  if (!songOv && !userOv) return PRESETS[m];
+  const combined: Overrides = { ...songOv, ...userOv };
   let merged = mergedCache[m];
   if (!merged) {
-    merged = buildMerged(m, ov);
+    merged = buildMerged(m, combined);
     mergedCache[m] = merged;
   }
   return merged;
+}
+
+/**
+ * Drum preset for a mood with a song kit layered on: mood (incl. song palette) -> kit shape / dB offsets -> the user's
+ * Sound Lab drums.* overrides, which always win. `kit` null = the mood's own drums.
+ */
+export function drumPresetFor(mood: MoodId, kit: DrumKitId | null): DrumPreset {
+  const base = getPreset(mood).drums;
+  const k = kit ? DRUM_KITS[kit] : undefined;
+  if (!k) return base;
+  const user = getTuningOverrides(mood);
+  const free = (f: string): boolean => !hasOwn(user, `drums.${f}`);
+  const out: DrumPreset = { ...base };
+  const w = out as unknown as Record<string, number | string>;
+  for (const [f, v] of Object.entries(k.shape)) if (free(f) && v !== undefined) w[f] = v;
+  for (const [f, d] of Object.entries(k.db)) if (free(f) && d !== undefined) w[f] = (w[f] as number) + d;
+  if (k.ceilingMul && free('ceilingHz')) out.ceilingHz = Math.min(18000, base.ceilingHz * k.ceilingMul);
+  return out;
+}
+
+/** Pull the song kit keys ('drums.kit' index, 'drums.tune' semitones) out of palette overrides. */
+export function splitDrumKit(overrides: Readonly<Overrides>): { kit?: number; tune: number; rest: Overrides } {
+  const { 'drums.kit': kit, 'drums.tune': tune, ...rest } = overrides;
+  return { kit: typeof kit === 'number' ? Math.round(kit) : undefined, tune: typeof tune === 'number' ? tune : 0, rest };
 }
 
 /** Mood crossfade time (s) for setMood(). */

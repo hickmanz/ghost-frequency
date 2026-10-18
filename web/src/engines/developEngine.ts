@@ -1,6 +1,6 @@
 /**
  * Developed engine: the same Form, grammars, and motif bank as Full, plus pass arrangement
- * (last-pass harmonic color, density, shared motif, swing, kick duck, sparse bell).
+ * (last-pass harmonic color, density, shared motif, kick duck, sparse bell).
  * Full's render path never calls this class, so the same seed on Full stays the same piece.
  */
 import type {
@@ -25,6 +25,7 @@ import { MOODS } from '../composition/moods';
 import { chordSegments, planEnd, type SectionPlan } from '../composition/plan';
 import { int, stream } from '../composition/rng';
 import { clamp, clamp01, toChordSpec } from '../composition/theory';
+import { swingPitchedLayers } from '../composition/swing';
 import { arrangeDevelopEvents } from './developArrange';
 import { arrangeSection, sectionSignature, type ArrangedSection } from './developColor';
 import type { ComposerEngine, EngineInfo } from './types';
@@ -124,6 +125,18 @@ export class DevelopEngine implements ComposerEngine {
     };
   }
 
+  rewind(bar: number): void {
+    const beat = bar * BEATS_PER_BAR;
+    for (const [k, n] of this.lastNote) {
+      if (n.beat + n.durBeats > beat - 1e-6) this.lastNote.delete(k);
+    }
+    this.cache.clear();
+  }
+
+  skipToNextSong(fromBar: number, _params: GenerationParams): number {
+    return fromBar + 24;
+  }
+
   dispose(): void {
     this.form = null;
     this.cache.clear();
@@ -190,7 +203,7 @@ export class DevelopEngine implements ComposerEngine {
       ...renderDrums(ctx),
     );
 
-    const shaped = arrangeDevelopEvents({
+    const arrangedEvents = arrangeDevelopEvents({
       events,
       plan,
       sourceLoop: arranged.sourceLoop,
@@ -200,6 +213,7 @@ export class DevelopEngine implements ComposerEngine {
       fromBar,
       toBar,
     });
+    const shaped = swingPitchedLayers(arrangedEvents, plan, params);
 
     if (!this.bellUp) {
       const firstBell = shaped.find((e) => e.kind === 'note' && e.layer === 'bell');

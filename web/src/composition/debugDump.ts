@@ -22,7 +22,7 @@ export interface DumpOptions {
 function drumGrid(notes: NoteEvent[], barStart: number): string {
   const cells: string[] = new Array(16).fill('.');
   const put = (step: number, ch: string, rank: number): void => {
-    const rankOf = (c: string): number => ('.'.includes(c) ? 0 : 'hH'.includes(c) ? 1 : 'ck'.includes(c) ? 2 : 3);
+    const rankOf = (c: string): number => ('.'.includes(c) ? 0 : 'hHsR'.includes(c) ? 1 : 'ckr'.includes(c) ? 2 : 3);
     if (rankOf(ch) >= rankOf(cells[step]!) || rank > 0) cells[step] = ch;
   };
   for (const n of notes) {
@@ -34,7 +34,10 @@ function drumGrid(notes: NoteEvent[], barStart: number): string {
     else if (n.midi === DRUM.hatClosed) put(step, n.vel < 0.18 ? 'h' : 'H', 0);
     else if (n.midi === DRUM.hatOpen) put(step, 'O', 1);
     else if (n.midi === DRUM.crash) put(step, '*', 3);
-    else if (n.midi === DRUM.tom) put(step, 'T', 3);
+    else if (n.midi === DRUM.rim) put(step, 'r', 2);
+    else if (n.midi === DRUM.ride) put(step, 'R', 1);
+    else if (n.midi === DRUM.shaker) put(step, 's', 0);
+    else if (n.midi >= 41 && n.midi <= 50) put(step, 'T', 3);
   }
   return cells.join('');
 }

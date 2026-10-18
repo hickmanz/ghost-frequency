@@ -183,6 +183,8 @@ export const TUNING_SCHEMA: TuningGroup[] = [
       p('drums.kickHz', 'Kick pitch', 'Higher = a higher, punchier kick. Lower = a deeper rumble', 35, 80, 1, HZ),
       p('drums.kickPitchOct', 'Kick punch', 'How much the kick "drops" in pitch at the start. Higher = more beater-like click and punch', 0.5, 3.5, 0.1),
       p('drums.snareDb', 'Snare level', 'Volume of the snare. Higher = a louder crack', -30, -2, 0.5, DB),
+      p('drums.snareSizzleDb', 'Snare sizzle', 'The bright white-noise "tss" on top of the snare (80s drum-machine hiss). Higher = hissier, lower = a darker, rounder snare', -48, -8, 0.5, DB),
+      p('drums.snareTailHz', 'Snare tail brightness', 'Tone of the short gated-reverb burst after the snare. Higher = a bright "tssh", lower = a soft whoosh', 2000, 10000, 50, HZ),
       p('drums.clapDb', 'Clap level', 'Volume of the hand-clap. Higher = more claps', -36, -6, 0.5, DB),
       p('drums.hatDb', 'Hi-hat level', 'Volume of the tick-tick cymbal sound. Higher = busier and brighter', -40, -12, 0.5, DB),
       p('drums.hatHpHz', 'Hi-hat brightness', 'Higher = thinner, sizzlier hats. Lower = fuller, breathier hats', 3000, 11000, 50, HZ),

@@ -1,0 +1,8 @@
+# Optional ML stack for neural composer engines (install in addition to requirements.txt).
+# Install PyTorch for your CUDA version from https://pytorch.org first if needed.
+torch>=2.2.0
+transformers>=4.40.0
+peft>=0.10.0
+miditok>=3.0.0
+sentence-transformers>=2.7.0
+numpy>=1.26.0

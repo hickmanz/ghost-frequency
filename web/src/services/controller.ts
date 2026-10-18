@@ -10,6 +10,8 @@ export interface PlaybackController {
   regenerate(newSeed?: number): Promise<void>;
   /** Offline render N bars to a WAV file download (Phase 2). */
   exportWav?(bars: number): Promise<void>;
+  /** Skip to the next discrete song (local engines). */
+  skipSong?(): void;
 }
 
 let current: PlaybackController | null = null;

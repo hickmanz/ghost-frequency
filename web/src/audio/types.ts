@@ -21,6 +21,10 @@ export interface AudioRenderer {
    * Events whose time has already passed must be dropped silently.
    */
   schedule(batch: EventBatch): void;
+  /** Cancel notes/automation scheduled at or after this beat (for live re-compose). */
+  cancelFrom(beat: number): void;
+  /** Hard seek: clear pending events and move the beat clock (used by skip song). */
+  seekToBeat(beat: number): void;
 
   /**
    * Fade out (default ~1.2s), cancel all scheduled events, release voices, reset beat clock to 0,
@@ -76,6 +80,9 @@ export interface AudioRenderer {
   getComposerLiveParam(key: string): number | undefined;
   getComposerFilterOpenness(layer: LayerId): number | undefined;
   getComposerLiveVersion(): number;
+
+  /** Live tone macros from Lab/Radio + director (optional). */
+  applyToneMacros?(tone: import('@shared/index').ToneParams): void;
 
   dispose(): void;
 }

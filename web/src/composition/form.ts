@@ -25,6 +25,7 @@ import {
   type MotifHistory,
 } from './motifs';
 import { MOODS, type ArpFamily, type DrumTier, type MoodConfig, type SectionName } from './moods';
+import type { SongPlan } from './songPlan';
 import {
   allLayers,
   invalidatePlan,
@@ -37,6 +38,7 @@ import {
   type TransitionStyle,
 } from './plan';
 import { chance, jitter, pick, stream, weightedPick, type Rng } from './rng';
+import { driveLengthScale, formDrive, resolvedSteer } from './steer';
 import { buildChord, clamp01, keysEqual } from './theory';
 
 /** Bars before a section's end at which the next section gets planned (and the current plan is "locked"). */
@@ -167,11 +169,25 @@ export class Form {
   readonly bank: MotifBank;
   readonly history: MotifHistory;
   private homeTemplates: ReturnType<typeof templatesOf> | null = null;
+  readonly song: SongPlan | null;
+  private readonly sectionIndexBase: number;
 
-  constructor(seed: number, params: GenerationParams) {
+  constructor(
+    seed: number,
+    params: GenerationParams,
+    song: SongPlan | null = null,
+    sectionIndexBase = 0,
+    sharedHistory?: MotifHistory,
+  ) {
     this.seed = seed >>> 0;
-    this.bank = createMotifBank(this.seed, MOODS[params.mood]);
-    this.history = createHistory();
+    this.song = song;
+    this.sectionIndexBase = sectionIndexBase;
+    const mood = song?.mood ?? params.mood;
+    this.bank = createMotifBank(this.seed ^ (song?.index ?? 0), MOODS[mood]);
+    this.history = sharedHistory ?? createHistory();
+    if (song) {
+      this.homeTemplates = templatesOf(song.homeProgression);
+    }
     this.planFirst(params);
   }
 
@@ -194,16 +210,19 @@ export class Form {
 
   /** Section containing `bar`, planning forward as needed. */
   sectionForBar(bar: number, params: GenerationParams): SectionPlan {
-    while (planEnd(this.last()) <= bar) this.planNext(params);
-    // plans are contiguous; binary-ish scan from the end
-    for (let i = this.plans.length - 1; i >= 0; i--) if (this.plans[i]!.startBar <= bar) return this.plans[i]!;
-    return this.plans[0]!;
+    while (planEnd(this.last()) <= bar && this.canPlanMore()) this.planNext(params);
+    for (let i = this.plans.length - 1; i >= 0; i--) {
+      const p = this.plans[i]!;
+      if (p.startBar <= bar && bar < planEnd(p)) return p;
+    }
+    return this.last();
   }
 
   /** Ensure the section after `plan` exists. */
   ensureNext(plan: SectionPlan, params: GenerationParams): SectionPlan {
     let n = this.next(plan);
     while (!n) {
+      if (!this.canPlanMore()) return plan;
       this.planNext(params);
       n = this.next(plan);
     }
@@ -233,76 +252,141 @@ export class Form {
     }
   }
 
+  truncateToLength(songLengthBars: number): void {
+    if (!this.song) return;
+    const end = this.song.startBar + songLengthBars;
+    while (this.plans.length > 0 && this.plans[this.plans.length - 1]!.startBar >= end) this.plans.pop();
+    const last = this.plans[this.plans.length - 1];
+    if (last && planEnd(last) > end) {
+      last.lengthBars = end - last.startBar;
+      invalidatePlan(last);
+    }
+  }
+
+  private canPlanMore(): boolean {
+    if (!this.song) return true;
+    return this.plans.length < this.song.schedule.length;
+  }
+
+  /** After all sections are planned, align song.lengthBars with fitLength-adjusted timeline. */
+  private syncSongLength(): void {
+    if (!this.song || this.plans.length < this.song.schedule.length) return;
+    const last = this.plans[this.plans.length - 1]!;
+    this.song.lengthBars = planEnd(last) - this.song.startBar;
+  }
+
+  private songMeta(): Pick<SectionPlan, 'songIndex' | 'songTitle' | 'drumStyle' | 'swing'> {
+    if (!this.song) return {};
+    return {
+      songIndex: this.song.index,
+      songTitle: this.song.title,
+      drumStyle: this.song.drumStyle,
+      swing: this.song.swing,
+    };
+  }
+
   // ------------------------------------------------------------------------------------------
   // planning
   // ------------------------------------------------------------------------------------------
 
   private planFirst(params: GenerationParams): void {
-    const mood = MOODS[params.mood];
-    const keyRng = stream(this.seed, 'form', 0, 'key');
-    const tonic = weightedPick(
-      keyRng,
-      mood.tonicWeights.map((w, i) => [i, w] as const),
-    );
-    const scale = weightedPick(keyRng, mood.scales);
-    const key: KeySpec = { tonic, scale };
-    const lengthRng = stream(this.seed, 'form', 0, 'length');
-    let length = chance(lengthRng, 0.6) ? 16 : 32;
-    const prog = generateProgression(key, mood, stream(this.seed, 'form', 0, 'prog'));
+    const mood = MOODS[this.song?.mood ?? params.mood];
+    const idx = this.sectionIndexBase;
+    const streamKey = this.song ? this.song.index : 0;
+    let name: SectionName = 'Intro';
+    let length: number;
+    let key: KeySpec;
+    let prog: Progression;
+    if (this.song) {
+      const slot = this.song.schedule[0]!;
+      name = slot.name;
+      length = slot.bars;
+      key = { ...this.song.key };
+      prog = this.song.homeProgression;
+    } else {
+      const keyRng = stream(this.seed, 'form', streamKey, 'key');
+      const tonic = weightedPick(
+        keyRng,
+        mood.tonicWeights.map((w, i) => [i, w] as const),
+      );
+      const scale = weightedPick(keyRng, mood.scales);
+      key = { tonic, scale };
+      const lengthRng = stream(this.seed, 'form', streamKey, 'length');
+      length = chance(lengthRng, 0.6) ? 16 : 32;
+      prog = generateProgression(key, mood, stream(this.seed, 'form', streamKey, 'prog'));
+      length = fitLength(length, prog);
+      this.homeTemplates = templatesOf(prog);
+    }
     length = fitLength(length, prog);
-    this.homeTemplates = templatesOf(prog);
-    const voicings = voiceLeadLoop(prog.chords, { open: mood.padOpen });
+    const voicings = voiceLeadLoop(prog.chords, padVoiceLeadOpts(this.seed, streamKey, this.plans.length, mood, params));
     const bassRoots = bassRootsForChords(prog.chords, null);
     const none = allLayers(() => false);
+    const startBar = this.song?.startBar ?? 0;
     const plan: SectionPlan = {
-      index: 0,
-      name: 'Intro',
-      mood: params.mood,
-      startBar: 0,
+      index: idx,
+      name,
+      mood: this.song?.mood ?? params.mood,
+      startBar,
       lengthBars: length,
       curveBars: length,
       key,
       progression: prog,
       voicings,
       bassRoots,
-      energy: { from: SECTION_ENERGY.Intro[0], start: SECTION_ENERGY.Intro[0], end: SECTION_ENERGY.Intro[1] },
-      layers: this.buildLayers('Intro', length, stream(this.seed, 'form', 0, 'layers'), none, mood),
+      energy: { from: SECTION_ENERGY[name][0], start: SECTION_ENERGY[name][0], end: SECTION_ENERGY[name][1] },
+      layers: this.buildLayers(name, length, stream(this.seed, 'form', streamKey, 0, 'layers'), none, mood, formDrive(params)),
       joinsPrev: allLayers(() => false),
       leavesAtEnd: allLayers(() => false),
       motifIds: [],
-      drumTierCap: capTier(DRUM_CAP.Intro, mood),
-      arpFamily: weightedPick(stream(this.seed, 'form', 0, 'arp'), mood.arp.families),
-      bassPedal: chance(stream(this.seed, 'form', 0, 'pedal'), mood.bass.pedalChance),
+      drumTierCap: capTier(DRUM_CAP[name], mood),
+      arpFamily: this.song
+        ? this.song.initialArpFamily
+        : weightedPick(stream(this.seed, 'form', streamKey, 'arp'), mood.arp.families),
+      bassPedal: chance(stream(this.seed, 'form', streamKey, 'pedal'), mood.bass.pedalChance),
       exitKeyChange: false,
+      ...this.songMeta(),
     };
-    plan.motifIds = selectMotifs(this.bank, this.history, stream(this.seed, 'form', 0, 'motif'), 0, mood);
+    plan.motifIds = selectMotifs(this.bank, this.history, stream(this.seed, 'form', streamKey, 'motif'), idx, mood);
     this.plans.push(plan);
+    this.syncSongLength();
   }
 
   planNext(params: GenerationParams): SectionPlan {
     const A = this.last();
     const idx = A.index + 1;
-    const mood = MOODS[params.mood];
+    const steer = resolvedSteer(params);
+    const mood = MOODS[this.song?.mood ?? params.mood];
     const seed = this.seed;
     const moodChanged = params.mood !== A.mood;
+    const streamKey = this.song ? this.song.index : 0;
+    const localIdx = this.plans.length;
 
-    // --- what kind of section
-    const name = pickNextName(A.name, mood, stream(seed, 'form', idx, 'name'), params);
-    let length = weightedPick(stream(seed, 'form', idx, 'length'), SECTION_LENGTHS[name]);
+    let name: SectionName;
+    let length: number;
+    if (this.song && localIdx < this.song.schedule.length) {
+      const slot = this.song.schedule[localIdx]!;
+      name = slot.name;
+      length = slot.bars;
+    } else if (this.song) {
+      throw new Error('song schedule exhausted');
+    } else {
+      name = pickNextName(A.name, mood, stream(seed, 'form', idx, 'name'), params);
+      length = weightedPick(stream(seed, 'form', idx, 'length'), SECTION_LENGTHS[name]);
+    }
 
     // --- key
-    const keyRng = stream(seed, 'form', idx, 'key');
+    const keyRng = stream(seed, 'form', streamKey, localIdx, 'key');
     const allowed = mood.scales.map((s) => s[0]);
     let key = A.key;
     if (moodChanged) {
       if (!allowed.includes(A.key.scale) || chance(keyRng, 0.25)) key = relatedKey(A.key, keyRng, allowed);
-    } else if (chance(keyRng, MODULATE_CHANCE[name] * (0.35 + params.variation * 0.9))) {
+    } else if (chance(keyRng, MODULATE_CHANCE[name] * (0.25 + params.variation * 0.55 + steer.motion * 0.45))) {
       key = relatedKey(A.key, keyRng, allowed);
     }
     const keyChanged = !keysEqual(key, A.key);
 
     // --- progression
-    const progRng = stream(seed, 'form', idx, 'prog');
+    const progRng = stream(seed, 'form', streamKey, localIdx, 'prog');
     let prog: Progression;
     if (moodChanged) {
       prog = generateProgression(key, mood, progRng);
@@ -310,14 +394,17 @@ export class Form {
       const useHome = this.homeTemplates !== null && chance(progRng, 0.25);
       const source = useHome ? this.homeTemplates! : templatesOf(A.progression);
       const base = realizeProgression(key, source);
-      const amount = (name === 'Peak' ? 0.6 : 1) * (0.04 + 0.8 * params.variation);
+      const amount = (name === 'Peak' ? 0.6 : 1) * (0.04 + 0.55 * params.variation + 0.45 * steer.motion);
       prog = mutateProgression(base, progRng, amount);
+    }
+    if (!this.song) {
+      length = Math.max(8, Math.round(length * driveLengthScale(formDrive(params))));
     }
     length = fitLength(length, prog);
 
     // --- pivot chord at the end of the previous section (modulations happen only at boundaries)
     if (keyChanged && A.lengthBars >= 8) {
-      const pivRng = stream(seed, 'form', idx, 'pivot');
+      const pivRng = stream(seed, 'form', streamKey, localIdx, 'pivot');
       const before = segmentAt(A, A.lengthBars - 3);
       const tpl = findPivotTemplate(A.key, key, pivRng, 2, before.chord.rootPc);
       if (tpl) {
@@ -335,11 +422,14 @@ export class Form {
     const tail = lastSegment(A);
 
     // --- voicings / bass for the loop, led from the end of A
-    const voicings = voiceLeadLoop(prog.chords, { prev: tail.voicing, open: mood.padOpen });
+    const voicings = voiceLeadLoop(
+      prog.chords,
+      padVoiceLeadOpts(seed, streamKey, localIdx, mood, params, tail.voicing),
+    );
     const bassRoots = bassRootsForChords(prog.chords, tail.bassRoot);
 
     // --- energy
-    const eRng = stream(seed, 'form', idx, 'energy');
+    const eRng = stream(seed, 'form', streamKey, localIdx, 'energy');
     const [e0, e1] = SECTION_ENERGY[name];
     const energy = {
       from: A.energy.end,
@@ -349,7 +439,7 @@ export class Form {
 
     // --- layers
     const prevOn = endState(A);
-    const layers = this.buildLayers(name, length, stream(seed, 'form', idx, 'layers'), prevOn, mood);
+    const layers = this.buildLayers(name, length, stream(seed, 'form', streamKey, localIdx, 'layers'), prevOn, mood, formDrive(params));
 
     const joinsPrev = allLayers((l) => prevOn[l] && inFirstBar(layers[l]));
     const leaves = allLayers((l) => prevOn[l] && !inFirstBar(layers[l]));
@@ -381,13 +471,15 @@ export class Form {
       leavesAtEnd: allLayers(() => false),
       motifIds: [],
       drumTierCap: capTier(DRUM_CAP[name], mood),
-      arpFamily: pickArpFamily(mood, A.arpFamily, stream(seed, 'form', idx, 'arp')),
-      bassPedal: chance(stream(seed, 'form', idx, 'pedal'), mood.bass.pedalChance),
+      arpFamily: pickArpFamily(mood, A.arpFamily, stream(seed, 'form', streamKey, localIdx, 'arp')),
+      bassPedal: chance(stream(seed, 'form', streamKey, localIdx, 'pedal'), mood.bass.pedalChance),
       entry: style,
       exitKeyChange: false,
+      ...this.songMeta(),
     };
-    plan.motifIds = selectMotifs(this.bank, this.history, stream(seed, 'form', idx, 'motif'), idx, mood);
+    plan.motifIds = selectMotifs(this.bank, this.history, stream(seed, 'form', streamKey, 'motif'), idx, mood);
     this.plans.push(plan);
+    this.syncSongLength();
     return plan;
   }
 
@@ -401,6 +493,7 @@ export class Form {
     rng: Rng,
     prevOn: LayerState,
     mood: MoodConfig,
+    drive = 0.5,
   ): Record<LayerId, BarInterval[]> {
     const out = allLayers(() => [] as BarInterval[]);
     out.pad = [[0, L]];
@@ -421,15 +514,20 @@ export class Form {
       }
     } else {
       const recipe = RECIPES[name];
+      const early = name === 'Intro' || name === 'Drift';
+      const drumBoost = early ? Math.max(0, drive - 0.5) * 1.2 : 0;
       const entries = recipe.staged
         .map((s) => {
-          const pAbs = s.layer === 'drums' ? s.p * moodDrums : s.p;
+          const pAbs = s.layer === 'drums' ? Math.min(1, s.p * moodDrums + drumBoost * moodDrums) : s.p;
           const present = prevOn[s.layer] ? chance(rng, s.keep ?? 0.9) : chance(rng, pAbs);
           return { layer: s.layer, order: s.order + rng.next() * 0.4, present };
         })
         .filter((e) => e.present)
         .sort((a, b) => a.order - b.order);
-      let t = pick(rng, recipe.firstDelay);
+      // high drive: layers stack in faster; low drive: slower, more patient entries
+      const stagger = 1.4 - drive * 1.2;
+      const minGap = drive > 0.75 ? 2 : 4;
+      let t = Math.round((pick(rng, recipe.firstDelay) * stagger) / 4) * 4;
       for (const e of entries) {
         if (prevOn[e.layer]) {
           out[e.layer] = [[0, L]];
@@ -437,7 +535,7 @@ export class Form {
         }
         if (t > L - 4) continue;
         out[e.layer] = [[t, L]];
-        t += pick(rng, recipe.spacing);
+        t += Math.max(minGap, Math.round((pick(rng, recipe.spacing) * stagger) / 2) * 2);
       }
     }
 
@@ -462,6 +560,23 @@ function inFirstBar(iv: readonly BarInterval[]): boolean {
   return iv.some(([s, e]) => s <= 0 && e > 0);
 }
 
+function padVoiceLeadOpts(
+  seed: number,
+  streamKey: number,
+  sectionIdx: number,
+  mood: MoodConfig,
+  params: GenerationParams,
+  prev?: readonly number[] | null,
+) {
+  const v = Math.min(1, Math.max(0, params.variation));
+  return {
+    prev,
+    open: mood.padOpen,
+    pathPick: stream(seed, 'form', streamKey, sectionIdx, 'padPath'),
+    pathSlack: 4 + v * 14,
+  };
+}
+
 /** Which layers are audible in the final bar of the section (before exit flags are applied). */
 export function endState(plan: SectionPlan): LayerState {
   const rel = plan.lengthBars - 1;
@@ -477,7 +592,7 @@ function fitLength(length: number, prog: Progression): number {
   if (prog.loopBars > 8 && L % prog.loopBars !== 0) {
     L = L + 8 <= 64 ? L + 8 : L - 8;
   }
-  return Math.max(16, Math.min(64, L));
+  return Math.max(8, Math.min(64, L));
 }
 
 function pickNextName(prev: SectionName, mood: MoodConfig, rng: Rng, params: GenerationParams): SectionName {

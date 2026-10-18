@@ -4,15 +4,17 @@ import type { AudioRenderer } from '../audio/types';
 import type { ComposerEngine } from './types';
 import type { PlaybackController } from '../services/controller';
 import { useStore } from '../services/store';
+import { effectiveParams, effectiveTone, pinSet } from '../services/director/effective';
+import { rerollSongHomes } from '../services/director/songMacros';
 import { keyLabel } from '../composition/theory';
 import { EventFeed } from './eventFeed';
 
-/** How far ahead (in beats) of the audio clock we keep notes scheduled. 4 bars of 4/4. */
-const LOOKAHEAD_BEATS = 16;
-/** Max bars rendered per pump tick, so a stalled tab can't produce a giant blocking burst. */
+/** How far ahead (in beats) of the audio clock we keep notes scheduled. 2 bars of 4/4 for local engines. */
+const LOOKAHEAD_BEATS = 8;
 const MAX_BARS_PER_TICK = 4;
-/** Pump interval. Note timing never depends on this: events carry absolute beats scheduled on the audio clock. */
-const PUMP_MS = 200;
+const PUMP_MS = 150;
+const FLUSH_MARGIN_BEATS = 0.4;
+const FLUSH_DEBOUNCE_MS = 70;
 /** UI read-out refresh interval. */
 const NOW_MS = 100;
 
@@ -40,8 +42,24 @@ export class Conductor implements PlaybackController {
   private pumping = false;
   private unsubscribe: Array<() => void> = [];
   private resetting: Promise<void> | null = null;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
   /** Rolling window of generated events for main-screen visuals (history + lookahead). */
   readonly feed = new EventFeed();
+
+  private static grooveChanged(a: ReturnType<typeof useStore.getState>, b: ReturnType<typeof useStore.getState>): boolean {
+    return (
+      a.params !== b.params ||
+      a.steer !== b.steer ||
+      a.tone !== b.tone ||
+      a.chaos.amount !== b.chaos.amount ||
+      a.chaos.rate !== b.chaos.rate
+    );
+  }
+
+  private liveParams() {
+    const st = useStore.getState();
+    return effectiveParams(st.params, st.mod, pinSet(st.pins));
+  }
 
   constructor(
     private readonly renderer: AudioRenderer,
@@ -63,6 +81,8 @@ export class Conductor implements PlaybackController {
             if (state.muted[layer] !== prev.muted[layer]) this.renderer.setLayerMuted(layer, !!state.muted[layer]);
           }
         }
+        if (Conductor.grooveChanged(state, prev)) this.scheduleFlush();
+        if (state.tone !== prev.tone || state.mod !== prev.mod) this.applyToneMacros();
       }),
     );
   }
@@ -70,13 +90,16 @@ export class Conductor implements PlaybackController {
   async play(): Promise<void> {
     const st = useStore.getState();
     if (!this.started) {
+      // mixer / mute / solo go in BEFORE start() so the graph is built with them, instead of being built with
+      // defaults and immediately re-ramped at the same audio time
+      this.renderer.setMixer(st.mixer);
+      this.renderer.setSolo(st.solo);
+      for (const layer of Object.keys(st.muted) as LayerId[]) this.renderer.setLayerMuted(layer, !!st.muted[layer]);
       await this.renderer.start();
       this.started = true;
       this.applyTuning(st.tuning, {});
-      this.renderer.setMixer(st.mixer);
+      this.renderer.setMixer(useStore.getState().mixer);
       this.renderer.setMood(st.params.mood);
-      this.renderer.setSolo(st.solo);
-      for (const layer of Object.keys(st.muted) as LayerId[]) this.renderer.setLayerMuted(layer, !!st.muted[layer]);
       this.engine.init(st.params.seed, st.params);
       this.nextBar = 0;
       this.markers = [];
@@ -138,6 +161,25 @@ export class Conductor implements PlaybackController {
     }
   }
 
+  skipSong(): void {
+    if (!this.started || this.resetting) return;
+    const params = this.liveParams();
+    const playBeat = this.renderer.getBeat();
+    const playBar = Math.floor(playBeat / 4);
+    let jumpBar = this.engine.skipToNextSong?.(playBar, params) ?? playBar + 24;
+    if (!Number.isFinite(jumpBar) || jumpBar <= playBar) jumpBar = playBar + 24;
+
+    const jumpBeat = jumpBar * 4;
+    this.renderer.cancelFrom(playBeat);
+    this.renderer.seekToBeat(jumpBeat);
+    this.engine.rewind?.(jumpBar);
+    this.markers = this.markers.filter((m) => m.beat < jumpBeat);
+    this.feed.dropBefore(jumpBeat);
+    this.nextBar = jumpBar;
+    this.pump(true, jumpBeat, true);
+    this.updateNow();
+  }
+
   async exportWav(bars: number): Promise<void> {
     const { params, mixer } = useStore.getState();
     const { exportWav } = await import('./exportWav');
@@ -146,10 +188,37 @@ export class Conductor implements PlaybackController {
 
   dispose(): void {
     this.stopPump();
+    if (this.flushTimer) clearTimeout(this.flushTimer);
     this.unsubscribe.forEach((u) => u());
     this.unsubscribe = [];
     this.engine.dispose?.();
     this.renderer.dispose();
+  }
+
+  private scheduleFlush(): void {
+    if (this.flushTimer !== null) return;
+    this.flushTimer = setTimeout(() => {
+      this.flushTimer = null;
+      this.flush();
+    }, FLUSH_DEBOUNCE_MS);
+  }
+
+  private flush(): void {
+    if (!this.started || this.resetting || this.pumping) return;
+    const cut = this.renderer.getBeat() + FLUSH_MARGIN_BEATS;
+    const cutBar = Math.floor(cut / 4);
+    if (cutBar >= this.nextBar) return;
+    this.renderer.cancelFrom(cut);
+    this.engine.rewind?.(cutBar);
+    this.markers = this.markers.filter((m) => m.beat < cut);
+    this.nextBar = cutBar;
+    this.pump(true, cut);
+  }
+
+  private applyToneMacros(): void {
+    const st = useStore.getState();
+    const tone = effectiveTone(st.tone, st.mod, pinSet(st.pins));
+    this.renderer.applyToneMacros?.(tone);
   }
 
   // ---- internals -------------------------------------------------------------------------
@@ -175,23 +244,19 @@ export class Conductor implements PlaybackController {
     this.nowTimer = null;
   }
 
-  /** Render bars until we are LOOKAHEAD_BEATS ahead of the audio clock. */
-  private pump(initialFill: boolean): void {
-    if (this.pumping) return;
+  private pump(initialFill: boolean, fromBeat = -Infinity, force = false): void {
+    if (this.pumping && !force) return;
     this.pumping = true;
     try {
-      const params = useStore.getState().params;
-      const barBeats = 4;
-      const maxBars = initialFill ? LOOKAHEAD_BEATS / barBeats : MAX_BARS_PER_TICK;
-      const clock = this.renderer.getBeat();
-      const playbackBar = Math.floor(clock / barBeats);
-      this.engine.prefetch?.(this.nextBar, maxBars, params);
-      this.engine.prefetch?.(playbackBar, LOOKAHEAD_BEATS / barBeats, params);
+      const params = this.liveParams();
+      const maxBars = initialFill ? LOOKAHEAD_BEATS / 4 + 1 : MAX_BARS_PER_TICK;
       for (let i = 0; i < maxBars; i++) {
-        const clock = this.renderer.getBeat();
-        const ahead = this.nextBar * barBeats - clock;
+        const ahead = this.nextBar * 4 - this.renderer.getBeat();
         if (ahead >= LOOKAHEAD_BEATS) break;
-        const batch = this.engine.renderBars(this.nextBar, 1, params);
+        let batch = this.engine.renderBars(this.nextBar, 1, params);
+        if (fromBeat > batch.startBeat) {
+          batch = { ...batch, events: batch.events.filter((e) => e.beat >= fromBeat) };
+        }
         this.collectMarkers(batch);
         this.feed.add(batch);
         this.renderer.schedule(batch);
@@ -217,8 +282,9 @@ export class Conductor implements PlaybackController {
 
   private updateNow(): void {
     const beat = this.renderer.getBeat();
+    const store = useStore.getState();
     const patch: Partial<ReturnType<typeof useStore.getState>['now']> = {};
-    while (this.markers.length && this.markers[0].beat <= beat + 0.01) {
+    while (this.markers.length && this.markers[0]!.beat <= beat + 0.01) {
       const m = this.markers.shift()!;
       if (m.type === 'tempo') {
         patch.tempo = Math.round(m.tempo);
@@ -227,6 +293,18 @@ export class Conductor implements PlaybackController {
         patch.sectionName = m.ev.name;
         patch.sectionIndex = m.ev.sectionIndex;
         if (m.ev.chord) patch.chordLabel = m.ev.chord.label;
+        if (m.ev.songIndex !== undefined) patch.songIndex = m.ev.songIndex;
+        if (m.ev.songTitle) patch.songTitle = m.ev.songTitle;
+        if (m.ev.songProgress !== undefined) patch.songProgress = m.ev.songProgress;
+        if (m.ev.songIndex !== undefined && m.ev.songIndex !== store.now.songIndex) {
+          const songIdx = m.ev.songIndex;
+          const title = m.ev.songTitle ?? `Song ${songIdx}`;
+          const keyLabel = patch.keyLabel ?? store.now.keyLabel;
+          queueMicrotask(() => {
+            rerollSongHomes(songIdx);
+            useStore.getState().pushHistory({ index: songIdx, title, keyLabel });
+          });
+        }
       }
     }
     const bar = Math.floor(beat / 4);

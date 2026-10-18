@@ -9,7 +9,16 @@ export type SectionName = 'Intro' | 'Drift' | 'Build' | 'Peak' | 'Breakdown' | '
 export const SECTION_NAMES: readonly SectionName[] = ['Intro', 'Drift', 'Build', 'Peak', 'Breakdown', 'Outro'];
 
 export type ArpFamily = 'up' | 'updown' | 'broken' | 'skip' | 'pedal' | 'dotted';
-export type DrumStyle = 'minimal' | 'soft' | 'halftime' | 'fourfloor';
+/** Synthwave groove families; each song plays one (see layers/drums.ts for the patterns). */
+export type DrumStyle =
+  | 'fourfloor'
+  | 'backbeat'
+  | 'halftime'
+  | 'electro'
+  | 'breakbeat'
+  | 'gated'
+  | 'shuffle'
+  | 'minimal';
 export type DrumTier = 0 | 1 | 2 | 3;
 
 // ---------------------------------------------------------------------------------------------
@@ -226,7 +235,7 @@ export const MOODS: Record<MoodId, MoodConfig> = {
     },
     bass: { pedalChance: 0.0, activity: 0.8 },
     lead: { register: [64, 88], center: 74, activity: 1.0, longBias: 0.55 },
-    drums: { maxTier: 2, style: 'soft' },
+    drums: { maxTier: 2, style: 'backbeat' },
     texture: { noise: 0.35, drone: 0.6 },
     fx: { reverb: 0.62, delay: 0.56 },
     sectionBias: { Drift: 1.2, Peak: 0.9 },

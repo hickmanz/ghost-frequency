@@ -32,6 +32,20 @@ export class EventFeed {
     this.newestBar = -1;
   }
 
+  /** Drop generated history before a hard seek (skip song). */
+  dropBefore(beat: number): void {
+    const minBar = Math.floor(beat / BEATS_PER_BAR);
+    for (const b of this.bars.keys()) if (b < minBar) this.bars.delete(b);
+    for (const b of this.tempoByBar.keys()) if (b < minBar) this.tempoByBar.delete(b);
+    this.spans = this.spans.filter((s) => s.endBeat === Infinity || s.endBeat >= beat);
+    for (let i = 0; i < this.spans.length; i++) {
+      const s = this.spans[i]!;
+      if (s.startBeat < beat && (s.endBeat === Infinity || s.endBeat > beat)) {
+        this.spans[i] = { ...s, startBeat: beat };
+      }
+    }
+  }
+
   add(batch: EventBatch): void {
     const firstBar = Math.floor(batch.startBeat / BEATS_PER_BAR);
     const lastBar = Math.max(firstBar, Math.ceil(batch.endBeat / BEATS_PER_BAR) - 1);

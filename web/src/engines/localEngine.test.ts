@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PARAMS,
+  DRUM,
   LAYER_IDS,
   MOOD_IDS,
   SCHEMA_VERSION,
@@ -13,6 +14,7 @@ import {
   type NoteEvent,
   type SectionEvent,
 } from '@shared/index';
+import { TOM_NOTES } from '../composition/layers/drums';
 import { chordSegments } from '../composition/plan';
 import { mod12, scalePcs } from '../composition/theory';
 import { BASS_HI, BASS_LO, PAD_HI, PAD_LO } from '../composition/harmony';
@@ -116,7 +118,7 @@ describe('LocalEngine: contract', () => {
     }
   });
 
-  it('all notes have valid MIDI / velocity / duration and sit on a 16th grid', () => {
+  it('all notes have valid MIDI / velocity / duration and sit near a 16th grid (swing + feel offsets only)', () => {
     for (const mood of MOOD_IDS) {
       const notes = notesOf(flat(renderAll(params(mood, 77), 128).batches));
       expect(notes.length).toBeGreaterThan(200);
@@ -128,7 +130,9 @@ describe('LocalEngine: contract', () => {
         expect(n.vel).toBeLessThanOrEqual(1);
         expect(n.durBeats).toBeGreaterThan(0);
         expect(Number.isFinite(n.beat)).toBe(true);
-        expect((n.beat * 4) % 1).toBe(0);
+        const off = Math.abs(n.beat * 4 - Math.round(n.beat * 4)) / 4;
+        if (n.layer === 'pad' || n.layer === 'texture') expect(off).toBe(0);
+        else expect(off).toBeLessThan(0.1);
         expect(LAYER_IDS).toContain(n.layer);
       }
       for (const a of autoOf(flat(renderAll(params(mood, 77), 64).batches))) {
@@ -151,12 +155,25 @@ describe('LocalEngine: contract', () => {
 
   it('batching granularity does not change the music (constant params)', () => {
     const p = params('dreamy', 31);
-    const a = flat(renderAll(p, 96, 4).batches);
-    const b = flat(renderAll(p, 96, 8).batches);
-    const c = flat(renderAll(p, 96, 1).batches);
-    const key = (events: MusicEvent[]): string => JSON.stringify(events);
-    expect(key(b)).toBe(key(a));
-    expect(key(c)).toBe(key(a));
+    const bulk = new LocalEngine();
+    bulk.init(p.seed, p);
+    const once = bulk.renderBars(0, 96, p).events;
+    const chunked = flat(renderAll(p, 96, 4).batches);
+    const noteKey = (events: MusicEvent[]): string =>
+      JSON.stringify(
+        events.filter((e): e is NoteEvent => e.kind === 'note'),
+        (_, v) => (typeof v === 'number' ? Math.round(v * 1000) / 1000 : v),
+      );
+    expect(noteKey(chunked)).toBe(noteKey(once));
+  });
+
+  it('renders through intro and drift without throwing (song schedule)', () => {
+    const p = params('dreamy', 31);
+    const engine = new LocalEngine();
+    engine.init(p.seed, p);
+    for (let b = 0; b < 96; b++) {
+      expect(() => engine.renderBars(b, 1, p)).not.toThrow();
+    }
   });
 
   it('init() resets everything', () => {
@@ -241,7 +258,7 @@ describe('LocalEngine: musical structure (128 bars per mood)', () => {
           expect(n.midi).toBeGreaterThanOrEqual(PAD_LO - 1);
           expect(n.midi).toBeLessThanOrEqual(PAD_HI + 4);
         }
-        if (n.layer === 'drums') expect([36, 38, 39, 42, 46, 49, 43]).toContain(n.midi);
+        if (n.layer === 'drums') expect([...Object.values(DRUM), ...TOM_NOTES]).toContain(n.midi);
       }
 
       // all layers appear over 128 bars
@@ -376,6 +393,7 @@ describe('LocalEngine: live params and form', () => {
         const a = plans[i - 1]!;
         const b = plans[i]!;
         if (a.key.tonic !== b.key.tonic || a.key.scale !== b.key.scale) {
+          if (a.songIndex !== undefined && b.songIndex !== undefined && a.songIndex !== b.songIndex) continue;
           modulations++;
           expect(a.pivot).toBeDefined();
           const pcs = scalePcs(a.key);

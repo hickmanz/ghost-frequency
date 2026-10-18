@@ -12,7 +12,6 @@ import type { MotifBank } from '../composition/motifs';
 import { effectiveEnergy, layerOn, segmentAt, type SectionPlan } from '../composition/plan';
 import { BASS_HI, BASS_LO } from '../composition/harmony';
 
-const SWING_BEATS = 0.045;
 const DUCK_GAIN = 0.75;
 
 export interface ArrangeInput {
@@ -43,17 +42,12 @@ function mod(n: number, m: number): number {
 }
 
 function isHat(midi: number): boolean {
-  return midi === DRUM.hatClosed || midi === DRUM.hatOpen;
+  return midi === DRUM.hatClosed || midi === DRUM.hatOpen || midi === DRUM.ride || midi === DRUM.shaker;
 }
 
 function onDownbeat(beatInBar: number): boolean {
   const nearestBeat = Math.round(beatInBar);
   return Math.abs(beatInBar - nearestBeat) < 0.06 && nearestBeat % 1 === 0;
-}
-
-function offEighth(beatInBar: number): boolean {
-  const frac = beatInBar - Math.floor(beatInBar);
-  return Math.abs(frac - 0.5) < 0.04;
 }
 
 export function arrangeDevelopEvents(input: ArrangeInput): MusicEvent[] {
@@ -147,16 +141,6 @@ export function arrangeDevelopEvents(input: ArrangeInput): MusicEvent[] {
 
     if (pass === hatPass) drums = drums.filter((n) => isHat(n.midi));
     if (pass === kickGapPass && rel % sourceLoop < 2) drums = drums.filter((n) => n.midi !== DRUM.kick);
-
-    if (energy < 0.55) {
-      const swing = (n: NoteEvent): void => {
-        if ((n.layer === 'arp' || (n.layer === 'drums' && isHat(n.midi))) && offEighth(n.beat - bar * BEATS_PER_BAR)) {
-          n.beat += SWING_BEATS;
-        }
-      };
-      arp.forEach(swing);
-      drums.forEach(swing);
-    }
 
     const bellish = plan.name === 'Drift' || plan.name === 'Breakdown';
     const bell: NoteEvent[] = [];

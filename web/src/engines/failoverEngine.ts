@@ -79,6 +79,7 @@ export class FailoverEngine implements ComposerEngine {
   }
 
   prefetch(fromBar: number, count: number, params: GenerationParams): void {
+    if (this.remote.getEngineId() === 'py-neural-layers') return;
     this.remote.prefetch(fromBar, count, params);
   }
 

@@ -4,7 +4,7 @@
 import type { KeySpec, LayerId, MoodId } from '@shared/index';
 import { LAYER_IDS } from '@shared/index';
 import type { Progression } from './harmony';
-import type { ArpFamily, DrumTier, SectionName } from './moods';
+import type { ArpFamily, DrumStyle, DrumTier, SectionName } from './moods';
 import { clamp01, lerp, type RealChord } from './theory';
 
 export type { ArpFamily, DrumTier, SectionName };
@@ -55,6 +55,13 @@ export interface SectionPlan {
   /** transition style going out to the next section */
   exit?: TransitionStyle;
   exitKeyChange: boolean;
+  /** Owning song (absolute timeline). */
+  songIndex?: number;
+  songTitle?: string;
+  /** Per-song drum character override. */
+  drumStyle?: DrumStyle;
+  /** Per-song swing (0..~0.6) before the Swing knob. */
+  swing?: number;
   /** internal cache */
   _segKey?: string;
   _segs?: PlanSegment[];
@@ -155,6 +162,7 @@ export function sectionCurve(plan: SectionPlan, rel: number): number {
 }
 
 /** Section curve combined with the live user energy param: 0..1. */
-export function effectiveEnergy(plan: SectionPlan, rel: number, userEnergy: number): number {
-  return clamp01(userEnergy + (sectionCurve(plan, rel) - 0.5) * 0.7);
+export function effectiveEnergy(plan: SectionPlan, rel: number, userEnergy: number, build = 0.5): number {
+  const depth = 0.55 + build * 0.85;
+  return clamp01(userEnergy + (sectionCurve(plan, rel) - 0.5) * depth);
 }

@@ -83,6 +83,10 @@ Python engines (separate implementations, same schema):
 | ID | Name | Role |
 |----|------|------|
 | **`py-markov`** | Python Markov | Markov chord graph, Euclidean arp, simpler arrangement. Not a port of `local-js`. See [`python/engines/markov_engine.py`](python/engines/markov_engine.py). |
+| **`py-neural-layers`** | **Neural layers (hybrid)** | Browser runs **`local-js`** for sections, pad, texture, automation. Python generates **lead, arp, bass, drums** from bar context over WebSocket (protocol v2). Uses **Vibe** sliders + optional text prompt. Stub model by default; GPU + `requirements-ml.txt` for transformer inference. |
+| **`py-neural-full`** | **Neural full** | Replaces the whole JS composer: skeleton plan + neural notes for all layers + rule-based automation. Same vibe controls. |
+
+**Vibe** (Generation sidebar): `brightness`, `tension`, `density`, `groove` (0..1). Text **Apply prompt** sends `vibe_prompt` to Python when connected.
 
 Switching engines triggers **regenerate** so you do not mix two rule sets mid-piece.
 
@@ -94,6 +98,7 @@ To add another browser experiment: implement `ComposerEngine`, add an entry to `
 
 ```bash
 cd python && python -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt
+pip install -r requirements-ml.txt   # optional: neural engines on CUDA
 python -m server    # copy pairing token from the console
 ```
 

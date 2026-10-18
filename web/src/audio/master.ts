@@ -1,6 +1,6 @@
 import * as Tone from 'tone';
 import { clamp01, faderToGain, masterFilterHz, saturationCurve } from './mapping';
-import { rampParam } from './instruments/instrument';
+import { glideParam, rampParam } from './instruments/instrument';
 
 /** Analyser size: 512 frequency bins (fftSize 1024). */
 export const FFT_SIZE = 512;
@@ -71,7 +71,7 @@ export class MasterBus {
 
   /** User master fader 0..1 */
   setVolume(fader01: number, time = Tone.now(), rampSeconds = 0.05): void {
-    rampParam(this.volume.gain, faderToGain(fader01), time, rampSeconds);
+    glideParam(this.volume.gain, faderToGain(fader01), time, rampSeconds);
   }
 
   /** Fade gain used for pause/reset (independent of volume). */

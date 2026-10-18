@@ -3,14 +3,18 @@
  * Keep in sync with python/server/protocol.py and events.schema.json.
  */
 
-import type { EventBatch } from './events';
-import type { GenerationParams } from './params';
+import type { EventBatch, LayerId } from './events';
+import type { BarContext, GenerationParams, VibeParams } from './params';
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
+
+export type EngineMode = 'full' | 'layers';
 
 export interface EngineDescriptor {
   id: string;
   name: string;
+  mode?: EngineMode;
+  layers?: LayerId[];
 }
 
 // ---- client -> server -------------------------------------------------------
@@ -38,6 +42,13 @@ export interface ClientRender {
   fromBar: number;
   count: number;
   params: GenerationParams;
+  /** Required for py-neural-layers: one entry per bar in [fromBar, fromBar + count). */
+  context?: BarContext[];
+}
+
+export interface ClientVibePrompt {
+  type: 'vibe_prompt';
+  text: string;
 }
 
 export interface ClientPing {
@@ -45,7 +56,7 @@ export interface ClientPing {
   t?: number;
 }
 
-export type ClientMessage = ClientHello | ClientInit | ClientRender | ClientPing;
+export type ClientMessage = ClientHello | ClientInit | ClientRender | ClientPing | ClientVibePrompt;
 
 // ---- server -> client -------------------------------------------------------
 
@@ -70,9 +81,18 @@ export interface ServerError {
 export interface ServerPong {
   type: 'pong';
   t?: number;
+  /** Rolling average ms per bar from the last GPU generation (Engine panel). */
+  msPerBar?: number;
 }
 
-export type ServerMessage = ServerReady | ServerBatch | ServerError | ServerPong;
+export interface ServerVibe {
+  type: 'vibe';
+  vibe: VibeParams;
+  /** Optional mood suggestion from text_vibe. */
+  mood?: string;
+}
+
+export type ServerMessage = ServerReady | ServerBatch | ServerError | ServerPong | ServerVibe;
 
 /** POST /generate body */
 export interface GenerateRequest {

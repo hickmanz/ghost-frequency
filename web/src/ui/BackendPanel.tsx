@@ -37,6 +37,9 @@ export function BackendPanel() {
   const backend = useStore((s) => s.backend);
   const setBackend = useStore((s) => s.setBackend);
   const python = backend.mode === 'python';
+  const pyEngineId =
+    python && BROWSER_ENGINE_IDS.has(backend.engineId) ? 'py-markov' : backend.engineId;
+  const selectedPy = python ? backend.engines.find((e) => e.id === pyEngineId) : undefined;
   const connected = backend.status === 'connected';
   const hint = python ? httpsNonLocalHint() : null;
 
@@ -99,7 +102,14 @@ export function BackendPanel() {
       {sourceLabel && (
         <p className="note" role="status">
           {python ? `Active: ${sourceLabel}` : `Composition: ${sourceLabel}`}
-          {backend.latencyMs ? ` · ${backend.latencyMs} ms` : ''}
+          {backend.latencyMs ? ` · ${backend.latencyMs} ms RTT` : ''}
+          {backend.msPerBar ? ` · ${backend.msPerBar} ms/bar` : ''}
+        </p>
+      )}
+
+      {python && selectedPy?.mode === 'layers' && selectedPy.layers && selectedPy.layers.length > 0 && (
+        <p className="note">
+          Neural layers: {selectedPy.layers.join(', ')} · structure from browser (local-js)
         </p>
       )}
 
