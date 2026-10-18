@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+__pycache__/
+.venv/
+python/.gf_token
+*.pyc
+.pytest_cache/
