@@ -101,6 +101,7 @@ export class Conductor implements PlaybackController {
       this.renderer.setMixer(useStore.getState().mixer);
       this.renderer.setMood(st.params.mood);
       this.engine.init(st.params.seed, st.params);
+      rerollSongHomes(0);
       this.nextBar = 0;
       this.markers = [];
       this.feed.clear();
@@ -147,6 +148,7 @@ export class Conductor implements PlaybackController {
       this.engine.dispose?.();
       this.engine = this.engineFactory();
       this.engine.init(params.seed, params);
+      rerollSongHomes(0);
       this.renderer.setMood(params.mood);
       this.nextBar = 0;
       this.markers = [];
