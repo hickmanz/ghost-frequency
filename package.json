@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "npm run dev -w web",
     "build": "npm run build -w web",
+    "build:site": "npm run build:site -w web",
     "test": "npm run test -w web",
     "typecheck": "npm run typecheck -w web",
     "test:py": "cd python && pytest"
