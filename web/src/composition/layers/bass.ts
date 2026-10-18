@@ -11,7 +11,7 @@ import { midiToScaleIndex, mod12, scaleIndexToMidi, type RealChord } from '../th
 import { layerComplexity, resolvedSteer } from '../steer';
 import { BEATS_PER_BAR, energyAt, liveMood, note, type LayerContext } from './context';
 
-type Role = 'r' | 'o' | 'f';
+type Role = 'r' | 'o' | 'f' | 't';
 type Hit = readonly [beat: number, dur: number, role: Role];
 
 const SYNC_PATTERNS: ReadonlyArray<readonly Hit[]> = [
@@ -54,6 +54,18 @@ function fifthOf(chord: RealChord): number {
   return chord.intervals.find((i) => i === 6 || i === 7 || i === 8) ?? 7;
 }
 
+function thirdOf(chord: RealChord): number | null {
+  return chord.intervals.find((i) => i === 3 || i === 4) ?? null;
+}
+
+/** Octave-shift into the bass register (never clamp: clamping changes the pitch class). */
+function fitBass(m: number): number {
+  let x = m;
+  while (x > BASS_HI) x -= 12;
+  while (x < BASS_LO) x += 12;
+  return x;
+}
+
 function foldNear(m: number, target: number): number {
   let x = m;
   while (x - target > 6) x -= 12;
@@ -78,9 +90,12 @@ export function renderBass(ctx: LayerContext): NoteEvent[] {
     const isFirst = barInChord === 0;
     const isLast = barInChord === seg.bars - 1;
     const R = rootFor(ctx, seg);
-    const fifth = Math.min(BASS_HI, R + fifthOf(seg.chord));
-    const octave = R + 12 <= BASS_HI ? R + 12 : R;
-    const roleMidi = (r: Role): number => (r === 'r' ? R : r === 'o' ? octave : fifth);
+    const fifth = fitBass(R + fifthOf(seg.chord));
+    // high roots have no room for an octave above: jump down instead (or to the fifth below) so 'o' still moves
+    const octave = R + 12 <= BASS_HI ? R + 12 : R - 12 >= BASS_LO ? R - 12 : fitBass(R + fifthOf(seg.chord) - 12);
+    const thirdIv = thirdOf(seg.chord);
+    const third = thirdIv === null ? fifth : fitBass(R + thirdIv);
+    const roleMidi = (r: Role): number => (r === 'r' ? R : r === 'o' ? octave : r === 't' ? third : fifth);
 
     const e = Math.min(1, energyAt(ctx, bar) * (0.75 + 0.35 * mood.bass.activity));
     const tier = e < 0.36 ? 'long' : e < 0.68 ? 'sync' : 'drive';
@@ -121,15 +136,25 @@ export function renderBass(ctx: LayerContext): NoteEvent[] {
       if (tier === 'sync') pat = SYNC_PATTERNS[Math.floor(patRng.next() * SYNC_PATTERNS.length)]!;
       else if (e > 0.88 && layerComplexity(params) > 0.62 && chance(patRng, 0.35)) pat = DRIVE_16;
       else pat = DRIVE_PATTERNS[Math.floor(patRng.next() * DRIVE_PATTERNS.length)]!;
+      const cx = layerComplexity(params);
       const flip = chance(rng, params.variation * 0.3) ? int(rng, 1, 6) : -1;
+      const useThird = tier === 'sync' && !pedalNow && thirdIv !== null && chance(rng, 0.15 + 0.35 * cx);
+      // turnaround on the last bar of a 4-bar phrase: octave + fifth pickup over the final beat
+      const fill = passing === null && rel % 4 === 3 && chance(rng, 0.3 + 0.4 * cx);
+      const fillFrom = fill ? 3 : lastBeatLimit;
       pat.forEach(([beat, dur, role], i) => {
-        if (beat >= lastBeatLimit) return;
+        if (beat >= fillFrom) return;
         let r: Role = role;
         if (i === flip && role === 'r' && beat > 0) r = 'o';
-        const accent = beat === 0 ? 0.08 : beat % 1 === 0 ? 0.02 : -0.04;
-        const end = Math.min(beat + dur * 0.92, lastBeatLimit);
-        hits.push({ beat, dur: end - beat, midi: roleMidi(r), vel: baseVel + accent + jitter(rng, 0.02) });
+        if (useThird && role === 'f' && beat % 1 !== 0) r = 't';
+        const accent = beat === 0 ? 0.12 : beat % 1 === 0 ? 0.03 : beat % 0.5 === 0 ? -0.05 : -0.09;
+        const end = Math.min(beat + dur * 0.92, fillFrom);
+        hits.push({ beat, dur: end - beat, midi: roleMidi(r), vel: baseVel + accent + jitter(rng, 0.03) });
       });
+      if (fill) {
+        hits.push({ beat: 3, dur: 0.46, midi: octave, vel: baseVel + 0.02 });
+        hits.push({ beat: 3.5, dur: 0.46, midi: fifth === octave ? R : fifth, vel: baseVel - 0.03 });
+      }
     }
     if (passing !== null) hits.push({ beat: 3.5, dur: 0.5, midi: passing, vel: baseVel - 0.04 });
 

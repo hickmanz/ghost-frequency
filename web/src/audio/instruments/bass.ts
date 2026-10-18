@@ -129,7 +129,7 @@ export class BassInstrument implements Instrument {
     this.saw.envelope.release = p.release;
     this.sub.envelope.release = Math.max(0.1, p.release); // also restores it after releaseAll()
     this.saw.filterEnvelope.decay = p.filterDecay;
-    this.saw.filterEnvelope.octaves = p.filterOctaves * (0.6 + 0.4 * vel);
+    this.saw.filterEnvelope.octaves = p.filterOctaves * (0.4 + 0.6 * vel);
     this.saw.portamento = p.glide;
     this.sub.portamento = p.glide;
     // sub an octave down when that stays >= ~44 Hz, otherwise unison
