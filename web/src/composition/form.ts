@@ -346,7 +346,14 @@ export class Form {
       exitKeyChange: false,
       ...this.songMeta(),
     };
-    plan.motifIds = selectMotifs(this.bank, this.history, stream(this.seed, 'form', streamKey, 'motif'), idx, mood);
+    plan.motifIds = selectMotifs(
+      this.bank,
+      this.history,
+      stream(this.seed, 'form', streamKey, 'motif'),
+      idx,
+      mood,
+      resolvedSteer(params).recall,
+    );
     this.plans.push(plan);
     this.syncSongLength();
   }
@@ -477,7 +484,14 @@ export class Form {
       exitKeyChange: false,
       ...this.songMeta(),
     };
-    plan.motifIds = selectMotifs(this.bank, this.history, stream(seed, 'form', streamKey, 'motif'), idx, mood);
+    plan.motifIds = selectMotifs(
+      this.bank,
+      this.history,
+      stream(seed, 'form', streamKey, 'motif'),
+      idx,
+      mood,
+      steer.recall,
+    );
     this.plans.push(plan);
     this.syncSongLength();
     return plan;

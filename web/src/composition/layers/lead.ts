@@ -15,7 +15,7 @@ import {
 import { layerOn, segmentAt } from '../plan';
 import { chance, jitter, stream } from '../rng';
 import { clashesWithChord, mod12, snapToScale, type RealChord } from '../theory';
-import { resolvedSteer } from '../steer';
+import { leadRealizeRegister, resolvedSteer } from '../steer';
 import { BEATS_PER_BAR, energyAt, liveMood, note, type LayerContext } from './context';
 
 const SECTION_LEAD_BASE: Record<SectionName, number> = {
@@ -106,11 +106,12 @@ function buildPhrase(ctx: LayerContext, block: number, off: number): NoteEvent[]
 
   const mood = liveMood(ctx);
   const seg0 = segmentAt(plan, startRel);
+  const { register, center } = leadRealizeRegister(mood, params);
   const real = transposeToChord(m, {
     key: plan.key,
     chord: seg0.chord,
-    register: mood.lead.register,
-    center: mood.lead.center,
+    register,
+    center,
   });
 
   const startBeat = (plan.startBar + startRel) * BEATS_PER_BAR;

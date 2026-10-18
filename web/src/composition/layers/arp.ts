@@ -132,7 +132,8 @@ export function renderArp(ctx: LayerContext): NoteEvent[] {
 
     // family: mostly the section family, sometimes a neighbour for variety (per 8-bar block)
     let family: ArpFamily = plan.arpFamily;
-    if (chance(blockRng, 0.35 * params.variation)) {
+    const sync = steer.sync;
+    if (chance(blockRng, 0.35 * params.variation * (1 - sync * 0.85))) {
       const alt: ArpFamily[] = ['up', 'updown', 'broken', 'skip'];
       family = alt[int(blockRng, 0, alt.length - 1)]!;
     }
@@ -144,7 +145,7 @@ export function renderArp(ctx: LayerContext): NoteEvent[] {
     if (chance(barRng, pm)) mutate(pat, barRng, pool.length, params.variation > 0.7 ? 2 : 1);
 
     // gating for breathing (never on beats) + sparser at low energy
-    const gate = (1 - e) * 0.24 + 0.04 + (turnaround ? 0.1 : 0);
+    const gate = ((1 - e) * 0.24 + 0.04 + (turnaround ? 0.1 : 0)) * (1.15 - sync * 0.65);
     const beatStepEvery = steps / 4;
     const baseVel = 0.26 + 0.2 * e + 0.05 * cx;
     const octLift = e > 0.7 && turnaround && chance(barRng, 0.5);

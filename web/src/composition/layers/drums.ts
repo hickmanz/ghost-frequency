@@ -109,7 +109,7 @@ export function renderDrums(ctx: LayerContext): NoteEvent[] {
   const cx = layerComplexity(params);
   const variation = clamp01(params.variation * 0.6 + steer.motion * 0.4);
   const swing = swingAmount(plan, params);
-  const loose = LOOSE[family] * (0.6 + steer.feel * 0.8);
+  const loose = LOOSE[family] * (0.6 + steer.feel * 0.8) * (1.2 - steer.sync * 0.45);
   const level = LEVEL[family] ?? 1;
   const snareLag = 0.004 + steer.feel * 0.012;
 

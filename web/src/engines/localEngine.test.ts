@@ -1,6 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_PARAMS,
+  DEFAULT_STEER,
   DRUM,
   LAYER_IDS,
   MOOD_IDS,
@@ -74,6 +75,14 @@ describe('LocalEngine: contract', () => {
     expect(b.tempo).toBeGreaterThanOrEqual(90);
     expect(b.tempo).toBeLessThanOrEqual(110);
     expect(b.events.length).toBeGreaterThan(5);
+  });
+
+  it('honours steer knobs passed from the UI (lead density)', () => {
+    const sparse = params('nostalgic', 4242, { steer: { ...DEFAULT_STEER, lead: 0.05 } });
+    const dense = params('nostalgic', 4242, { steer: { ...DEFAULT_STEER, lead: 0.95 } });
+    const nSparse = notesOf(flat(renderAll(sparse, 48).batches)).filter((n) => n.layer === 'lead').length;
+    const nDense = notesOf(flat(renderAll(dense, 48).batches)).filter((n) => n.layer === 'lead').length;
+    expect(nDense).toBeGreaterThan(nSparse);
   });
 
   it('tempo comes from the mood range, stays stable, and honours the user override', () => {

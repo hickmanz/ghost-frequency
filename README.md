@@ -9,7 +9,20 @@ npm install
 npm run dev        # http://localhost:5173 - click to begin
 npm run test       # composition, audio-mapping, presets tests
 npm run build      # static build in web/dist (relative paths, host anywhere)
+npm run build:site # same as CI (GitHub Pages artifact)
 ```
+
+### GitHub Pages
+
+The live app is **not** the README. CI builds `web/dist` (see [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)) and uploads that folder.
+
+If the site shows this README as a markdown page, Pages is pointed at the **wrong source**:
+
+1. Repo **Settings** → **Pages**
+2. **Build and deployment** → **Source**: choose **GitHub Actions** (not “Deploy from a branch”)
+3. Re-run **Deploy GitHub Pages** under **Actions** (or push to `main`)
+
+You should get the React app (`index.html`, title “Ghost Frequency”). Project URL is usually `https://<user>.github.io/<repo>/`.
 
 ---
 

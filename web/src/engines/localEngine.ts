@@ -22,9 +22,9 @@ import type {
 
 } from '@shared/index';
 
-import { DEFAULT_VIBE, MOOD_IDS, SCHEMA_VERSION } from '@shared/index';
+import { DEFAULT_STEER, DEFAULT_VIBE, MOOD_IDS, SCHEMA_VERSION } from '@shared/index';
 
-import { sanitizeVibe } from '../services/presets';
+import { sanitizeSteer, sanitizeVibe } from '../services/presets';
 
 import { renderAutomation } from '../composition/automation';
 
@@ -79,6 +79,8 @@ function sanitizeParams(p: GenerationParams): GenerationParams {
     vibe: p.vibe ? sanitizeVibe(p.vibe) : { ...DEFAULT_VIBE },
 
     contrast: clamp01(p.contrast ?? 0.5),
+
+    steer: sanitizeSteer(p.steer, DEFAULT_STEER),
 
   };
 

@@ -375,7 +375,10 @@ export function selectMotifs(
   rng: Rng,
   sectionIndex: number,
   mood: MoodConfig,
+  /** 0..1: higher = more likely to bring back an older theme */
+  recall = 0.5,
 ): number[] {
+  const recall01 = recall < 0 ? 0 : recall > 1 ? 1 : recall;
   const ids = bank.motifs.map((m) => m.id);
   const useCount = (id: number): number => history.uses[id]?.length ?? 0;
   const lastUse = (id: number): number => {
@@ -389,13 +392,15 @@ export function selectMotifs(
     const principal = ids.slice().sort((a, b) => useCount(b) - useCount(a) || a - b)[0]!;
     const stale = ids.filter((id) => sectionIndex - lastUse(id) >= 3 && useCount(id) > 0);
     const r = rng.next();
-    if (r < 0.5) primary = principal;
-    else if (r < 0.78 && stale.length > 0) primary = pick(rng, stale);
+    const principalCut = 0.5 - recall01 * 0.38;
+    const staleCut = 0.78 + recall01 * 0.17;
+    if (r < principalCut) primary = principal;
+    else if (r < staleCut && stale.length > 0) primary = pick(rng, stale);
     else if (r < 0.9 && bank.motifs.length < 5) primary = addMotif(bank, mood).id;
     else primary = pick(rng, ids);
   }
   const chosen = [primary];
-  if (chance(rng, 0.55)) {
+  if (chance(rng, 0.55 + recall01 * 0.28)) {
     const others = bank.motifs.map((m) => m.id).filter((id) => id !== primary);
     if (others.length) chosen.push(weightedPick(rng, others.map((id) => [id, 1 + useCount(id)] as const)));
   }

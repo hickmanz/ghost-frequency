@@ -3,7 +3,8 @@
  */
 import type { GenerationParams, SteerParams, VibeParams } from '@shared/index';
 import { DEFAULT_STEER, DEFAULT_VIBE } from '@shared/index';
-import { clamp01 } from './theory';
+import type { MoodConfig } from './moods';
+import { clamp, clamp01 } from './theory';
 
 export function resolvedSteer(params: GenerationParams): SteerParams {
   const s = { ...DEFAULT_STEER, ...params.steer };
@@ -47,4 +48,18 @@ export function feelMul(feel: number): number {
 export function layerComplexity(params: GenerationParams): number {
   const s = resolvedSteer(params);
   return clamp01(params.complexity * 0.35 + s.colour * 0.65);
+}
+
+/** Lead melody register from mood defaults shifted by the Register knob (0 = lower, 1 = higher). */
+export function leadRealizeRegister(
+  mood: MoodConfig,
+  params: GenerationParams,
+): { register: readonly [number, number]; center: number } {
+  const shift = Math.round((resolvedSteer(params).register - 0.5) * 16);
+  const [lo, hi] = mood.lead.register;
+  const center = clamp(mood.lead.center + shift, 36, 108);
+  return {
+    register: [clamp(lo + shift, 36, 108), clamp(hi + shift, 36, 108)] as const,
+    center,
+  };
 }
