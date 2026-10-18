@@ -83,7 +83,7 @@ export function renderBass(ctx: LayerContext): NoteEvent[] {
     const roleMidi = (r: Role): number => (r === 'r' ? R : r === 'o' ? octave : fifth);
 
     const e = Math.min(1, energyAt(ctx, bar) * (0.75 + 0.35 * mood.bass.activity));
-    const tier = e < 0.32 ? 'long' : e < 0.62 ? 'sync' : 'drive';
+    const tier = e < 0.36 ? 'long' : e < 0.68 ? 'sync' : 'drive';
     const rng = stream(ctx.seed, 'bass', 'bar', plan.index, rel);
     const patRng = stream(ctx.seed, 'bass', 'pat', plan.index, Math.floor(rel / 8));
     const baseVel = 0.56 + 0.2 * e;
@@ -119,7 +119,7 @@ export function renderBass(ctx: LayerContext): NoteEvent[] {
     } else {
       let pat: readonly Hit[];
       if (tier === 'sync') pat = SYNC_PATTERNS[Math.floor(patRng.next() * SYNC_PATTERNS.length)]!;
-      else if (e > 0.85 && layerComplexity(params) > 0.55 && chance(patRng, 0.5)) pat = DRIVE_16;
+      else if (e > 0.88 && layerComplexity(params) > 0.62 && chance(patRng, 0.35)) pat = DRIVE_16;
       else pat = DRIVE_PATTERNS[Math.floor(patRng.next() * DRIVE_PATTERNS.length)]!;
       const flip = chance(rng, params.variation * 0.3) ? int(rng, 1, 6) : -1;
       pat.forEach(([beat, dur, role], i) => {

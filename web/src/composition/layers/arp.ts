@@ -124,28 +124,38 @@ export function renderArp(ctx: LayerContext): NoteEvent[] {
     const blockRng = stream(ctx.seed, 'arp', 'block', plan.index, block);
     const barRng = stream(ctx.seed, 'arp', 'bar', plan.index, block, rel % 4);
 
-    // rate: 16ths when the music is energetic/complex, else 8ths
-    const drive = 0.6 * e + 0.4 * cx + 0.2 * (mood.arp.density - 0.5);
-    const baseSteps = drive > 0.6 || plan.arpFamily === 'dotted' ? 16 : 8;
+    // rate: 16ths only when clearly hot; default 8ths keeps arps readable
+    const drive = 0.55 * e + 0.35 * cx + 0.15 * (mood.arp.density - 0.5);
+    const want16 = drive > 0.68 || (plan.arpFamily === 'dotted' && drive > 0.52);
+    const baseSteps = want16 ? 16 : 8;
     const steps = Math.min(32, Math.max(4, Math.round(baseSteps * feel)));
     const stepLen = BEATS_PER_BAR / steps;
 
-    // family: mostly the section family, sometimes a neighbour for variety (per 8-bar block)
+    // family: mostly the section family; Sync high = stay on plan family (no random hop)
     let family: ArpFamily = plan.arpFamily;
     const sync = steer.sync;
-    if (chance(blockRng, 0.35 * params.variation * (1 - sync * 0.85))) {
+    const familyHop = Math.min(
+      0.35 * params.variation,
+      0.35 * params.variation * clamp((0.82 - sync) / 0.32, 0, 1),
+    );
+    if (chance(blockRng, familyHop)) {
       const alt: ArpFamily[] = ['up', 'updown', 'broken', 'skip'];
       family = alt[int(blockRng, 0, alt.length - 1)]!;
     }
     const pat = basePattern(family, steps, pool.length, Math.floor(rel / 4) % 3);
 
-    // per-bar mutation; turnaround bar (last of 4) mutates more
+    // per-bar mutation; turnaround bar (last of 4) mutates more; high Sync = less bar-to-bar drift
     const turnaround = rel % 4 === 3;
-    const pm = Math.min(0.95, params.variation * 0.6 * (turnaround ? 1.6 : 1));
+    const mutateScale = 1 - clamp((sync - 0.55) / 0.45, 0, 1) * 0.45;
+    const pm = Math.min(0.95, params.variation * 0.6 * (turnaround ? 1.6 : 1) * mutateScale);
     if (chance(barRng, pm)) mutate(pat, barRng, pool.length, params.variation > 0.7 ? 2 : 1);
 
-    // gating for breathing (never on beats) + sparser at low energy
-    const gate = ((1 - e) * 0.24 + 0.04 + (turnaround ? 0.1 : 0)) * (1.15 - sync * 0.65);
+    // gating for breathing; lower Busy knob = sparser arp (fewer off-beat notes)
+    const gate =
+      (1 - e) * 0.28 +
+      0.06 +
+      (turnaround ? 0.08 : 0) +
+      clamp((0.55 - steer.busy) * 0.24, 0, 0.16);
     const beatStepEvery = steps / 4;
     const baseVel = 0.26 + 0.2 * e + 0.05 * cx;
     const octLift = e > 0.7 && turnaround && chance(barRng, 0.5);

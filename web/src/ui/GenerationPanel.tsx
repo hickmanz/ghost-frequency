@@ -2,13 +2,19 @@ import { useEffect, useState } from 'react';
 import { MOOD_IDS, type MoodId } from '@shared/index';
 import { useStore } from '../services/store';
 import { SEED_MAX, TEMPO_MAX, TEMPO_MIN, clamp } from '../services/presets';
+import { MOOD_STATION_HINTS, SLIDER_HINTS, hintForControl } from './controlHints';
 import { Slider } from './Slider';
 import { notify, randomSeed, regenerateWithSeed } from './uiState';
+import { STATIONS } from './stations';
 
 const MOODS: Record<MoodId, { name: string; blurb: string }> = {
   dreamy: { name: 'Dreamy', blurb: 'Lush pads, floating arps, soft major-7 haze.' },
-  dark: { name: 'Dark', blurb: 'Minor drones, driving bass, midnight neon.' },
+  sunrise: { name: 'Sunrise', blurb: 'Bright major anthems, open skies, golden hour.' },
   nostalgic: { name: 'Nostalgic', blurb: 'Warm analog 80s, bittersweet melodies.' },
+  drive: { name: 'Night Drive', blurb: 'Fast outrun, pumping octave bass, neon highway.' },
+  chase: { name: 'Chase', blurb: 'Menacing darksynth, gritty bass, electro breaks.' },
+  dark: { name: 'Dark', blurb: 'Minor drones, driving bass, midnight neon.' },
+  noir: { name: 'Neon Noir', blurb: 'Smoky jazz chords, swung beats, rain on glass.' },
   space: { name: 'Space Ambient', blurb: 'Slow drifting textures, vast reverb.' },
 };
 
@@ -19,6 +25,7 @@ function MoodSelector() {
     <div className="moods" role="radiogroup" aria-label="Mood">
       {MOOD_IDS.map((id) => {
         const selected = id === mood;
+        const { Icon } = STATIONS[id];
         return (
           <button
             key={id}
@@ -26,9 +33,13 @@ function MoodSelector() {
             role="radio"
             aria-checked={selected}
             className={`mood mood--${id}${selected ? ' is-selected' : ''}`}
+            title={MOOD_STATION_HINTS[id]}
             onClick={() => setParams({ mood: id })}
           >
-            <span className="mood__name">{MOODS[id].name}</span>
+            <span className="mood__name">
+              <Icon size={14} strokeWidth={2} aria-hidden="true" />
+              {MOODS[id].name}
+            </span>
             <span className="mood__blurb">{MOODS[id].blurb}</span>
           </button>
         );
@@ -54,6 +65,7 @@ function TempoControl() {
     <div className="tempo">
       <Slider
         label="Tempo"
+        title={SLIDER_HINTS.tempo}
         value={shown}
         min={TEMPO_MIN}
         max={TEMPO_MAX}
@@ -63,7 +75,7 @@ function TempoControl() {
         accent="cyan"
         onChange={(v) => setParams({ tempo: v })}
       />
-      <label className="toggle">
+      <label className="toggle" title="Pick BPM from mood and energy instead of a fixed tempo">
         <input type="checkbox" checked={auto} onChange={(e) => toggleAuto(e.currentTarget.checked)} />
         <span className="toggle__box" aria-hidden="true" />
         <span className="toggle__text">Auto</span>
@@ -162,9 +174,27 @@ export function GenerationPanel() {
       </h2>
       <MoodSelector />
       <div className="generation__sliders">
-        <Slider label="Energy" value={energy} onChange={(v) => setParams({ energy: v })} accent="magenta" />
-        <Slider label="Complexity" value={complexity} onChange={(v) => setParams({ complexity: v })} accent="violet" />
-        <Slider label="Variation" value={variation} onChange={(v) => setParams({ variation: v })} accent="cyan" />
+        <Slider
+          label="Energy"
+          title={hintForControl('energy')}
+          value={energy}
+          onChange={(v) => setParams({ energy: v })}
+          accent="magenta"
+        />
+        <Slider
+          label="Complexity"
+          title={hintForControl('complexity')}
+          value={complexity}
+          onChange={(v) => setParams({ complexity: v })}
+          accent="violet"
+        />
+        <Slider
+          label="Variation"
+          title={hintForControl('variation')}
+          value={variation}
+          onChange={(v) => setParams({ variation: v })}
+          accent="cyan"
+        />
         <TempoControl />
       </div>
       <SeedControl />

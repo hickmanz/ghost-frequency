@@ -12,6 +12,7 @@ interface SliderProps {
   disabled?: boolean;
   variant?: 'default' | 'mixer';
   accent?: 'cyan' | 'magenta' | 'violet';
+  title?: string;
 }
 
 function SliderImpl({
@@ -25,13 +26,14 @@ function SliderImpl({
   disabled,
   variant = 'default',
   accent = 'magenta',
+  title,
 }: SliderProps) {
   const id = useId();
   const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
   const shown = display ?? `${Math.round(pct)}%`;
   const style = { '--pct': `${pct}%` } as CSSProperties;
   return (
-    <div className={`slider slider--${variant} slider--${accent}${disabled ? ' is-disabled' : ''}`}>
+    <div className={`slider slider--${variant} slider--${accent}${disabled ? ' is-disabled' : ''}`} title={title}>
       <label className="slider__label" htmlFor={id}>
         {label}
       </label>

@@ -88,8 +88,12 @@ describe('LocalEngine: contract', () => {
   it('tempo comes from the mood range, stays stable, and honours the user override', () => {
     const ranges: Record<MoodId, [number, number]> = {
       dreamy: [84, 100],
-      dark: [70, 90],
+      sunrise: [100, 118],
       nostalgic: [90, 110],
+      drive: [112, 128],
+      chase: [100, 120],
+      dark: [70, 90],
+      noir: [76, 92],
       space: [60, 76],
     };
     for (const mood of MOOD_IDS) {

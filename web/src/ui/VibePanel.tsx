@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DEFAULT_VIBE } from '@shared/index';
 import { isPythonMode, sendVibePrompt } from '../services/backendService';
 import { useStore } from '../services/store';
+import { VIBE_SLIDER_HINTS } from './controlHints';
 import { Slider } from './Slider';
 import { notify } from './uiState';
 
@@ -37,10 +38,34 @@ export function VibePanel() {
         drives model conditioning; text prompts apply there when connected.
       </p>
       <div className="generation__sliders">
-        <Slider label="Brightness" value={vibe.brightness} onChange={(v) => setVibe({ brightness: v })} accent="cyan" />
-        <Slider label="Tension" value={vibe.tension} onChange={(v) => setVibe({ tension: v })} accent="magenta" />
-        <Slider label="Density" value={vibe.density} onChange={(v) => setVibe({ density: v })} accent="violet" />
-        <Slider label="Groove" value={vibe.groove} onChange={(v) => setVibe({ groove: v })} accent="cyan" />
+        <Slider
+          label="Brightness"
+          title={VIBE_SLIDER_HINTS.brightness}
+          value={vibe.brightness}
+          onChange={(v) => setVibe({ brightness: v })}
+          accent="cyan"
+        />
+        <Slider
+          label="Tension"
+          title={VIBE_SLIDER_HINTS.tension}
+          value={vibe.tension}
+          onChange={(v) => setVibe({ tension: v })}
+          accent="magenta"
+        />
+        <Slider
+          label="Density"
+          title={VIBE_SLIDER_HINTS.density}
+          value={vibe.density}
+          onChange={(v) => setVibe({ density: v })}
+          accent="violet"
+        />
+        <Slider
+          label="Groove"
+          title={VIBE_SLIDER_HINTS.groove}
+          value={vibe.groove}
+          onChange={(v) => setVibe({ groove: v })}
+          accent="cyan"
+        />
       </div>
       <div className="field">
         <label className="field__label" htmlFor="vibe-prompt">

@@ -118,6 +118,64 @@ const RANGES: Partial<Record<MoodId, Record<string, readonly [number, number]>>>
 
   },
 
+  sunrise: {
+
+    ...COMMON,
+
+    'pad.cutoffMax': [2200, 9200],
+
+    'arp.cutoffMax': [2000, 8500],
+
+    'bass.drive': [0, 0.35],
+
+    'fx.reverbLpHz': [5000, 14000],
+
+  },
+
+  drive: {
+
+    ...COMMON,
+
+    'arp.cutoffMax': [1600, 8500],
+
+    'bass.drive': [0.1, 0.6],
+
+    'fx.reverbReturnDb': [-16, -5],
+
+    'drums.ceilingHz': [7000, 15000],
+
+  },
+
+  chase: {
+
+    ...COMMON,
+
+    'pad.cutoffMax': [500, 4200],
+
+    'bass.drive': [0.3, 0.85],
+
+    'fx.reverbReturnDb': [-16, -6],
+
+    'drums.ceilingHz': [5000, 12000],
+
+  },
+
+  noir: {
+
+    ...COMMON,
+
+    'pad.cutoffMax': [600, 4200],
+
+    'lead.cutoffMax': [1100, 4800],
+
+    'fx.reverbLpHz': [2200, 7500],
+
+    'fx.delayLpHz': [1200, 4500],
+
+    'drums.ceilingHz': [3800, 9000],
+
+  },
+
 };
 
 

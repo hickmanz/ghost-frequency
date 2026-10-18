@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { LAYER_IDS, type LayerId } from '@shared/index';
 import { useStore } from '../services/store';
+import { hintForMixer } from './controlHints';
 import { Slider } from './Slider';
 
 const LABELS: Record<LayerId | 'master', string> = {
@@ -31,6 +32,7 @@ const Fader = memo(function Fader({ id }: { id: LayerId | 'master' }) {
   return (
     <Slider
       label={LABELS[id]}
+      title={hintForMixer(id)}
       value={value}
       variant="mixer"
       accent={ACCENTS[id]}

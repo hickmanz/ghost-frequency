@@ -12,12 +12,13 @@ interface KnobProps {
   mod?: number;
   pinned?: boolean;
   onTogglePin?: () => void;
+  onInteractStart?: () => void;
 }
 
 const SWEEP = 270;
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 
-function KnobImpl({ label, value, onChange, display, defaultValue, size = 'sm', disabled, title, mod, pinned, onTogglePin }: KnobProps) {
+function KnobImpl({ label, value, onChange, display, defaultValue, size = 'sm', disabled, title, mod, pinned, onTogglePin, onInteractStart }: KnobProps) {
   const id = useId();
   const drag = useRef<{ y: number; v: number; id: number } | null>(null);
   const dialRef = useRef<HTMLDivElement>(null);
@@ -34,6 +35,7 @@ function KnobImpl({ label, value, onChange, display, defaultValue, size = 'sm', 
       /* ignore */
     }
     dialRef.current?.focus({ preventScroll: true });
+    onInteractStart?.();
     drag.current = { y: e.clientY, v: value, id: e.pointerId };
   };
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -79,6 +81,7 @@ function KnobImpl({ label, value, onChange, display, defaultValue, size = 'sm', 
       <div
         ref={dialRef}
         className="knob__dial"
+        title={title}
         role="slider"
         tabIndex={disabled ? -1 : 0}
         aria-labelledby={id}

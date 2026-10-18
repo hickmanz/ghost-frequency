@@ -68,8 +68,12 @@ type Weights<T> = ReadonlyArray<readonly [T, number]>;
 
 const DRUM_FAMILIES: Record<MoodId, Weights<DrumStyle>> = {
   dreamy: [['minimal', 3], ['backbeat', 2], ['fourfloor', 2], ['gated', 1], ['halftime', 1]],
-  dark: [['halftime', 3], ['electro', 2], ['minimal', 2], ['breakbeat', 1]],
+  sunrise: [['backbeat', 3], ['fourfloor', 3], ['gated', 2], ['shuffle', 0.5]],
   nostalgic: [['fourfloor', 3], ['backbeat', 3], ['gated', 2], ['electro', 1], ['breakbeat', 1], ['shuffle', 1]],
+  drive: [['fourfloor', 4], ['gated', 2], ['backbeat', 1.5], ['electro', 1]],
+  chase: [['electro', 3], ['breakbeat', 3], ['fourfloor', 1.5], ['halftime', 1]],
+  dark: [['halftime', 3], ['electro', 2], ['minimal', 2], ['breakbeat', 1]],
+  noir: [['shuffle', 3], ['halftime', 2], ['minimal', 1.5], ['backbeat', 1]],
   space: [['minimal', 3], ['halftime', 2], ['gated', 1]],
 };
 
@@ -87,8 +91,12 @@ const FAMILY_SWING: Record<DrumStyle, readonly [number, number]> = {
 
 const DRUM_KITS: Record<MoodId, Weights<DrumKitId>> = {
   dreamy: [['linn', 3], ['soft', 3], ['dmx', 2], ['tape', 2], ['simmons', 1]],
-  dark: [['tr808', 3], ['tape', 3], ['simmons', 2], ['dmx', 1], ['tr909', 1]],
+  sunrise: [['linn', 3], ['dmx', 2], ['tr909', 2], ['simmons', 1]],
   nostalgic: [['linn', 3], ['dmx', 3], ['tr909', 2], ['tr808', 2], ['simmons', 1], ['tape', 1]],
+  drive: [['tr909', 3], ['linn', 3], ['dmx', 2], ['simmons', 1]],
+  chase: [['tr808', 3], ['dmx', 2], ['tr909', 2], ['simmons', 1]],
+  dark: [['tr808', 3], ['tape', 3], ['simmons', 2], ['dmx', 1], ['tr909', 1]],
+  noir: [['tape', 3], ['soft', 2], ['tr808', 2], ['linn', 1]],
   space: [['soft', 3], ['tape', 2], ['linn', 1], ['tr808', 1]],
 };
 

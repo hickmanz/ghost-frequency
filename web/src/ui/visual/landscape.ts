@@ -472,7 +472,78 @@ export const createLandscapeScene: SceneFactory = (ctx): SceneInstance => {
     ctx.globalAlpha = 1;
   };
 
-  const drawEffects = (dom: Theme, wDark: number) => {
+  const drawCar = (t: Theme, alpha: number) => {
+    const c = t.car;
+    if (!c || alpha <= 0.01) return;
+    const u = Math.min(W * 0.2, floorH * 0.85);
+    const cx = W / 2 + Math.sin(nowMs * 0.0006) * W * 0.012 * motion;
+    const gy = H - floorH * 0.14;
+    const by = gy - (kick * 2 + bassShake * Math.sin(nowMs * 0.05) * 1.2) * motion;
+    const X = (k: number) => cx + k * u;
+    const Y = (k: number) => by - k * u;
+    const lights = clamp01(0.65 + 0.35 * kick + 0.15 * level);
+
+    // tail-light pool on the road + contact shadow
+    ctx.fillStyle = c.lights;
+    ctx.globalAlpha = alpha * lights * 0.3;
+    ctx.beginPath();
+    ctx.ellipse(cx, gy + u * 0.03, u * 0.62, u * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#000';
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.beginPath();
+    ctx.ellipse(cx, gy, u * 0.55, u * 0.035, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // wheels stay planted while the body bounces
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = c.body;
+    ctx.fillRect(cx - u * 0.47, gy - u * 0.1, u * 0.15, u * 0.1);
+    ctx.fillRect(cx + u * 0.32, gy - u * 0.1, u * 0.15, u * 0.1);
+
+    // body + cabin
+    ctx.beginPath();
+    ctx.moveTo(X(-0.5), Y(0.06));
+    ctx.lineTo(X(-0.5), Y(0.17));
+    ctx.lineTo(X(-0.47), Y(0.22));
+    ctx.lineTo(X(-0.3), Y(0.24));
+    ctx.lineTo(X(-0.24), Y(0.36));
+    ctx.lineTo(X(0.24), Y(0.36));
+    ctx.lineTo(X(0.3), Y(0.24));
+    ctx.lineTo(X(0.47), Y(0.22));
+    ctx.lineTo(X(0.5), Y(0.17));
+    ctx.lineTo(X(0.5), Y(0.06));
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = c.rim;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = alpha * (0.45 + 0.35 * level);
+    ctx.stroke();
+
+    // rear window catching the sky
+    ctx.fillStyle = c.rim;
+    ctx.globalAlpha = alpha * 0.18;
+    ctx.beginPath();
+    ctx.moveTo(X(-0.21), Y(0.255));
+    ctx.lineTo(X(-0.17), Y(0.34));
+    ctx.lineTo(X(0.17), Y(0.34));
+    ctx.lineTo(X(0.21), Y(0.255));
+    ctx.closePath();
+    ctx.fill();
+
+    // full-width tail-light bar with a soft glow, plus the plate
+    ctx.fillStyle = c.lights;
+    ctx.globalAlpha = alpha * lights * 0.35;
+    ctx.fillRect(X(-0.48), Y(0.19), u * 0.96, u * 0.08);
+    ctx.globalAlpha = alpha * lights;
+    ctx.fillRect(X(-0.44), Y(0.165), u * 0.88, u * 0.035);
+    ctx.fillStyle = c.rim;
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.fillRect(X(-0.06), Y(0.1), u * 0.12, u * 0.03);
+    ctx.globalAlpha = 1;
+  };
+
+  const drawEffects = (dom: Theme, wRain: number) => {
     // ground ripples (kick: sharp / bass: wide and slow)
     ctx.lineCap = 'butt';
     for (let i = 0; i < RIPPLE_COUNT; i++) {
@@ -546,11 +617,11 @@ export const createLandscapeScene: SceneFactory = (ctx): SceneInstance => {
       }
     }
 
-    // rain (dark theme)
-    if (wDark > 0.01) {
+    // rain (rainy themes)
+    if (wRain > 0.01) {
       ctx.strokeStyle = '#9ec4ff';
       ctx.lineWidth = 1;
-      ctx.globalAlpha = wDark * 0.3;
+      ctx.globalAlpha = wRain * 0.3;
       ctx.beginPath();
       for (let i = 0; i < RAIN_COUNT; i++) {
         ctx.moveTo(rainX[i]!, rainY[i]!);
@@ -692,9 +763,14 @@ export const createLandscapeScene: SceneFactory = (ctx): SceneInstance => {
     } else {
       drawTheme(themeFor(cf.to), 1, glowAmt);
     }
-    const dom = themeFor(w > 0.5 ? cf.to : cf.from);
-    const wDark = (cf.from === 'dark' ? 1 - w : 0) + (cf.to === 'dark' ? w : 0);
-    drawEffects(dom, fading ? wDark : cf.to === 'dark' ? 1 : 0);
+    const from = themeFor(cf.from);
+    const to = themeFor(cf.to);
+    const dom = w > 0.5 ? to : from;
+    const wFrom = fading ? 1 - w : 0;
+    const wTo = fading ? w : 1;
+    drawEffects(dom, (from.rain ? wFrom : 0) + (to.rain ? wTo : 0));
+    drawCar(from, wFrom);
+    drawCar(to, wTo);
   };
 
   return { resize, frame };

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 import { useStore } from '../services/store';
 
-import { SoundLab, SoundLabButton } from './SoundLab';
+import { SoundLab } from './SoundLab';
 
 import { StartOverlay } from './StartOverlay';
 
@@ -165,8 +165,6 @@ export function App() {
         </div>
 
         <div className="header__right">
-
-          <SoundLabButton />
 
           <div className="header__hint">
 

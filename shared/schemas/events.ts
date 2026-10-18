@@ -10,8 +10,9 @@ export const SCHEMA_VERSION = 1;
 export type LayerId = 'pad' | 'arp' | 'bass' | 'lead' | 'drums' | 'texture' | 'bell';
 export const LAYER_IDS: readonly LayerId[] = ['pad', 'arp', 'bass', 'lead', 'drums', 'texture', 'bell'];
 
-export type MoodId = 'dreamy' | 'dark' | 'nostalgic' | 'space';
-export const MOOD_IDS: readonly MoodId[] = ['dreamy', 'dark', 'nostalgic', 'space'];
+export type MoodId = 'dreamy' | 'sunrise' | 'nostalgic' | 'drive' | 'chase' | 'dark' | 'noir' | 'space';
+/** Ring order: station drift steps to a neighbour, so adjacent moods should sound related. */
+export const MOOD_IDS: readonly MoodId[] = ['dreamy', 'sunrise', 'nostalgic', 'drive', 'chase', 'dark', 'noir', 'space'];
 
 export type ScaleName =
   | 'ionian' | 'dorian' | 'phrygian' | 'lydian' | 'mixolydian' | 'aeolian' | 'locrian'

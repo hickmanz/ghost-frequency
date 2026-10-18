@@ -1,6 +1,7 @@
 import { LAYER_IDS } from '@shared/index';
 import { useStore } from '../services/store';
 import { applyMod } from '../services/director/chaos';
+import { DIRECTOR_GROUP_HINTS, hintForControl, hintForMixer } from './controlHints';
 import { Knob } from './Knob';
 import { MixerFader } from './MixerFader';
 
@@ -9,18 +10,23 @@ function ModKnob({
   value,
   onChange,
   modKey,
+  hintKey,
   defaultValue = 0.5,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   modKey: string;
+  /** Tooltip key when it differs from modKey (e.g. Director chaos knobs). */
+  hintKey?: string;
   defaultValue?: number;
 }) {
   const mod = useStore((s) => s.mod[modKey as keyof typeof s.mod]);
   const pinned = !!useStore((s) => s.pins[modKey]);
   const togglePin = useStore((s) => s.togglePin);
   const live = mod !== undefined ? applyMod(value, mod) : undefined;
+  const base = hintForControl(hintKey ?? modKey);
+  const hint = base ? `${base} Pin (◇) to lock from Director drift.` : undefined;
   return (
     <Knob
       label={label}
@@ -30,24 +36,54 @@ function ModKnob({
       mod={live}
       pinned={pinned}
       onTogglePin={() => togglePin(modKey)}
+      title={hint}
     />
   );
 }
 
 function TracklistPanel() {
   const history = useStore((s) => s.trackHistory);
+  const songIndex = useStore((s) => s.now.songIndex);
+  const playing = useStore((s) => s.playing);
+  const tracks = history.length > 0 ? [...history].reverse() : [];
+
   return (
     <div className="panel panel--tracklist">
-      <h3>Tracklist</h3>
-      <ol className="tracklist">
-        {history.length === 0 && <li className="tracklist__empty">Songs appear as they play…</li>}
-        {history.map((t) => (
-          <li key={t.index}>
-            <span className="tracklist__title">{t.title}</span>
-            <span className="tracklist__key">{t.keyLabel}</span>
-          </li>
-        ))}
-      </ol>
+      <div className="tracklist__head">
+        <h3>Tracklist</h3>
+        {history.length > 0 && (
+          <span className="tracklist__count" aria-label={`${history.length} tracks`}>
+            {history.length}
+          </span>
+        )}
+      </div>
+      <div className="tracklist__scroll">
+        {history.length === 0 ? (
+          <p className="tracklist__empty">Songs appear here as they play.</p>
+        ) : (
+          <ol className="tracklist">
+            {tracks.map((t, i) => {
+              const isNow = t.index === songIndex;
+              return (
+                <li key={t.index} className={`tracklist__item${isNow ? ' is-now' : ''}${isNow && playing ? ' is-playing' : ''}`}>
+                  <span className="tracklist__num" aria-hidden="true">
+                    {String(tracks.length - i).padStart(2, '0')}
+                  </span>
+                  <div className="tracklist__main">
+                    <span className="tracklist__title">{t.title}</span>
+                    <span className="tracklist__key">{t.keyLabel}</span>
+                  </div>
+                  {isNow && (
+                    <span className="tracklist__badge" aria-label="Now playing">
+                      {playing ? 'On air' : 'Paused'}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </div>
     </div>
   );
 }
@@ -114,30 +150,60 @@ export function LabPanels() {
       </div>
       <div className="panel panel--chaos">
         <h3>Director</h3>
-        <div className="panel__knobs">
-          <ModKnob label="Chaos" modKey="energy" value={chaos.amount} onChange={(v) => setChaos({ amount: v })} defaultValue={0.35} />
-          <ModKnob label="Rate" modKey="variation" value={chaos.rate} onChange={(v) => setChaos({ rate: v })} defaultValue={0.4} />
-        </div>
-        <label className="toggle toggle--director" title="Between songs, sometimes step mood to a neighbor (unless mood is pinned)">
-          <input type="checkbox" checked={chaos.stationDrift} onChange={(e) => setChaos({ stationDrift: e.target.checked })} />
-          <span className="toggle__box" aria-hidden="true" />
-          <span className="toggle__text">Station drift</span>
-        </label>
-        <div className="chips">
-          {(['form', 'harmony', 'rhythm', 'melody', 'tone'] as const).map((g) => (
-            <button key={g} type="button" className={`chip${chaos[g] ? ' is-on' : ''}`} onClick={() => setChaos({ [g]: !chaos[g] })}>
-              {g}
-            </button>
-          ))}
+        <div className="director__body">
+          <div className="panel__knobs director__knobs">
+            <ModKnob
+              label="Chaos"
+              modKey="energy"
+              hintKey="chaos.amount"
+              value={chaos.amount}
+              onChange={(v) => setChaos({ amount: v })}
+              defaultValue={0.35}
+            />
+            <ModKnob
+              label="Rate"
+              modKey="variation"
+              hintKey="chaos.rate"
+              value={chaos.rate}
+              onChange={(v) => setChaos({ rate: v })}
+              defaultValue={0.4}
+            />
+          </div>
+          <div className="director__aside">
+            <label className="toggle toggle--director" title="Between songs, sometimes step mood to a neighbor (unless mood is pinned)">
+              <input type="checkbox" checked={chaos.stationDrift} onChange={(e) => setChaos({ stationDrift: e.target.checked })} />
+              <span className="toggle__box" aria-hidden="true" />
+              <span className="toggle__text">Station drift</span>
+            </label>
+            <div className="chips director__chips">
+              {(['form', 'harmony', 'rhythm', 'melody', 'tone'] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  className={`chip${chaos[g] ? ' is-on' : ''}`}
+                  title={DIRECTOR_GROUP_HINTS[g]}
+                  onClick={() => setChaos({ [g]: !chaos[g] })}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       <div className="panel panel--mixer">
         <h3>Mixer</h3>
         <div className="faders">
           {LAYER_IDS.map((l) => (
-            <MixerFader key={l} label={l} value={mixer[l]} onChange={(v) => setMixer(l, v)} />
+            <MixerFader key={l} label={l} title={hintForMixer(l)} value={mixer[l]} onChange={(v) => setMixer(l, v)} />
           ))}
-          <MixerFader label="master" value={mixer.master} onChange={(v) => setMixer('master', v)} className="fader--master" />
+          <MixerFader
+            label="master"
+            title={hintForMixer('master')}
+            value={mixer.master}
+            onChange={(v) => setMixer('master', v)}
+            className="fader--master"
+          />
         </div>
       </div>
     </div>

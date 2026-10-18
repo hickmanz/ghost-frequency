@@ -4,11 +4,12 @@ interface MixerFaderProps {
   value: number;
   onChange(v: number): void;
   className?: string;
+  title?: string;
 }
 
-export function MixerFader({ label, value, onChange, className = '' }: MixerFaderProps) {
+export function MixerFader({ label, value, onChange, className = '', title }: MixerFaderProps) {
   return (
-    <div className={`fader${className ? ` ${className}` : ''}`}>
+    <div className={`fader${className ? ` ${className}` : ''}`} title={title}>
       <input
         className="fader__input"
         type="range"

@@ -37,10 +37,11 @@ export function driveLengthScale(drive: number): number {
   return drive < 0.5 ? 1.25 - drive * 0.5 : 1 - (drive - 0.5);
 }
 
-/** Map feel 0..1 to tempo multiplier for pattern density. */
+/** Map feel 0..1 to arp step density (avoid 2×/32nd floods unless Feel is really high). */
 export function feelMul(feel: number): number {
-  if (feel < 0.35) return 0.5;
-  if (feel > 0.65) return 2;
+  if (feel < 0.32) return 0.5;
+  if (feel > 0.82) return 1.35;
+  if (feel > 0.62) return 1.12;
   return 1;
 }
 

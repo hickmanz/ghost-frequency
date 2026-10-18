@@ -1,4 +1,4 @@
-import type { MoodId } from '@shared/index';
+import { MOOD_IDS, type MoodId } from '@shared/index';
 import { clamp, clamp01, hash01, mulberry32, smoothstep } from './common';
 
 /** Pure data + math for the Landscape mode (unit-tested). No DOM access. */
@@ -61,6 +61,8 @@ export interface Theme {
   flashAlpha: number;
   rippleKick: string;
   rippleBass: string;
+  /** rear-view car silhouette driving on the grid */
+  car?: { body: string; rim: string; lights: string };
 }
 
 export const THEMES: Record<MoodId, Theme> = {
@@ -262,9 +264,202 @@ export const THEMES: Record<MoodId, Theme> = {
     rippleKick: '#8b5cff',
     rippleBass: '#19e6ff',
   },
+  sunrise: {
+    id: 'sunrise',
+    sky: [
+      [0, '#2b4a9c'],
+      [0.45, '#7f8fe0'],
+      [0.78, '#ffb08a'],
+      [1, '#ffe7a3'],
+    ],
+    ground: [
+      [0, '#7a3d7a'],
+      [0.3, '#40245e'],
+      [1, '#1a0f38'],
+    ],
+    horizonGlow: 'rgba(255, 220, 150, 0.65)',
+    sun: {
+      kind: 'stripes',
+      stops: [
+        [0, '#fff7c2'],
+        [0.5, '#ffd25c'],
+        [1, '#ff8a4d'],
+      ],
+      glow: 'rgba(255, 200, 110, 0.55)',
+      radius: 1.25,
+      x: 0.5,
+      y: 0.05,
+    },
+    nebula: [],
+    ridges: {
+      colors: ['#b0739e', '#7f4f8a', '#4a2e66'],
+      heights: [0.18, 0.12, 0.07],
+      ridged: false,
+      rim: '#ffd08a',
+    },
+    gridH: '#ffc46b',
+    gridV: '#ff8ab0',
+    gridAmount: 0.75,
+    starCount: 12,
+    starAlpha: 0.3,
+    city: 0,
+    cityColor: '#40245e',
+    windowColors: ['#ffe9b0', '#ffc2a0'],
+    rain: false,
+    fog: 0.15,
+    fogColor: 'rgba(255, 220, 190, 1)',
+    flashColor: '#fff6e0',
+    flashAlpha: 0.14,
+    rippleKick: '#ffd25c',
+    rippleBass: '#ff8ab0',
+  },
+  drive: {
+    id: 'drive',
+    sky: [
+      [0, '#050118'],
+      [0.55, '#1f0b4f'],
+      [0.85, '#7a1a8c'],
+      [1, '#ff3f8e'],
+    ],
+    ground: [
+      [0, '#1a0634'],
+      [0.25, '#0b0322'],
+      [1, '#03010c'],
+    ],
+    horizonGlow: 'rgba(255, 60, 160, 0.55)',
+    sun: {
+      kind: 'stripes',
+      stops: [
+        [0, '#ffcf3d'],
+        [0.55, '#ff3f8e'],
+        [1, '#8a1cff'],
+      ],
+      glow: 'rgba(255, 60, 170, 0.45)',
+      radius: 0.9,
+      x: 0.5,
+      y: 0.28,
+    },
+    nebula: [],
+    ridges: {
+      colors: ['#3a0f5c', '#22093f', '#0e0424'],
+      heights: [0.2, 0.13, 0.07],
+      ridged: true,
+      rim: '#19e6ff',
+    },
+    gridH: '#19e6ff',
+    gridV: '#ff2bd6',
+    gridAmount: 1,
+    starCount: 70,
+    starAlpha: 0.6,
+    city: 0.95,
+    cityColor: '#0d0326',
+    windowColors: ['#19e6ff', '#ff2bd6'],
+    rain: false,
+    fog: 0,
+    fogColor: 'rgba(255, 60, 160, 1)',
+    flashColor: '#ffe0f4',
+    flashAlpha: 0.2,
+    rippleKick: '#ff2bd6',
+    rippleBass: '#19e6ff',
+    car: { body: '#07020f', rim: '#ff2bd6', lights: '#ff2450' },
+  },
+  chase: {
+    id: 'chase',
+    sky: [
+      [0, '#040006'],
+      [0.6, '#24030f'],
+      [1, '#6a0a1e'],
+    ],
+    ground: [
+      [0, '#1c0410'],
+      [0.3, '#0c0208'],
+      [1, '#030003'],
+    ],
+    horizonGlow: 'rgba(255, 30, 60, 0.5)',
+    sun: {
+      kind: 'moon',
+      stops: [
+        [0, '#ff3b4f'],
+        [1, '#4a0614'],
+      ],
+      glow: 'rgba(255, 30, 60, 0.35)',
+      radius: 0.75,
+      x: 0.3,
+      y: 0.45,
+    },
+    nebula: [],
+    ridges: {
+      colors: ['#2a0712', '#17040b', '#070104'],
+      heights: [0.32, 0.22, 0.12],
+      ridged: true,
+      rim: '#ff1e3c',
+    },
+    gridH: '#ff1e3c',
+    gridV: '#ff6a2b',
+    gridAmount: 0.8,
+    starCount: 25,
+    starAlpha: 0.3,
+    city: 0.9,
+    cityColor: '#090105',
+    windowColors: ['#ff1e3c', '#ffb02b'],
+    rain: false,
+    fog: 0.35,
+    fogColor: 'rgba(200, 40, 60, 1)',
+    flashColor: '#ffd0d6',
+    flashAlpha: 0.34,
+    rippleKick: '#ff1e3c',
+    rippleBass: '#ffb02b',
+  },
+  noir: {
+    id: 'noir',
+    sky: [
+      [0, '#020309'],
+      [0.6, '#0b1424'],
+      [1, '#1c2a40'],
+    ],
+    ground: [
+      [0, '#0c1220'],
+      [0.3, '#060a14'],
+      [1, '#020308'],
+    ],
+    horizonGlow: 'rgba(60, 200, 220, 0.3)',
+    sun: {
+      kind: 'moon',
+      stops: [
+        [0, '#c8d6e8'],
+        [1, '#3a4a66'],
+      ],
+      glow: 'rgba(170, 200, 255, 0.18)',
+      radius: 0.5,
+      x: 0.78,
+      y: 0.6,
+    },
+    nebula: [],
+    ridges: {
+      colors: ['#121b2c', '#0b111e', '#04060c'],
+      heights: [0.12, 0.08, 0.05],
+      ridged: false,
+      rim: null,
+    },
+    gridH: '#2bd9c8',
+    gridV: '#ff4fa3',
+    gridAmount: 0.35,
+    starCount: 10,
+    starAlpha: 0.25,
+    city: 1,
+    cityColor: '#05080f',
+    windowColors: ['#ffb84d', '#2bd9c8'],
+    rain: true,
+    fog: 0.6,
+    fogColor: 'rgba(120, 150, 190, 1)',
+    flashColor: '#d8e6ff',
+    flashAlpha: 0.22,
+    rippleKick: '#ff4fa3',
+    rippleBass: '#2bd9c8',
+  },
 };
 
-export const THEME_ORDER: readonly MoodId[] = ['dreamy', 'dark', 'nostalgic', 'space'];
+export const THEME_ORDER: readonly MoodId[] = MOOD_IDS;
 
 export function themeFor(mood: string): Theme {
   return (THEMES as Record<string, Theme | undefined>)[mood] ?? THEMES.nostalgic;

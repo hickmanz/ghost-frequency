@@ -109,7 +109,7 @@ export function renderDrums(ctx: LayerContext): NoteEvent[] {
   const cx = layerComplexity(params);
   const variation = clamp01(params.variation * 0.6 + steer.motion * 0.4);
   const swing = swingAmount(plan, params);
-  const loose = LOOSE[family] * (0.6 + steer.feel * 0.8) * (1.2 - steer.sync * 0.45);
+  const loose = LOOSE[family] * (0.6 + steer.feel * 0.8) * (1.08 - steer.sync * 0.12);
   const level = LEVEL[family] ?? 1;
   const snareLag = 0.004 + steer.feel * 0.012;
 
@@ -117,7 +117,7 @@ export function renderDrums(ctx: LayerContext): NoteEvent[] {
     const rel = bar - plan.startBar;
     if (!layerOn(plan, 'drums', rel)) continue;
     if (exitDrop && rel === plan.lengthBars - 1) continue; // drop-out bar
-    const e = Math.min(1, energyAt(ctx, bar) * (0.65 + 0.5 * steer.busy));
+    const e = Math.min(1, energyAt(ctx, bar) * (0.62 + 0.42 * steer.busy));
     const tier = drumTierFor(plan, e, mood.drums.maxTier, drumCapBonus(plan, params.energy));
     if (tier === 0) continue;
     const rng = stream(ctx.seed, 'drums', 'bar', plan.index, rel);

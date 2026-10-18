@@ -7,6 +7,10 @@ from ..theory import clamp01, sanitize_vibe
 # Curated anchor phrases -> vibe + optional mood hint
 ANCHORS: list[dict[str, Any]] = [
     {"text": "rainy neon drive melancholic synthwave", "vibe": {"brightness": 0.45, "tension": 0.55, "density": 0.5, "groove": 0.55}, "mood": "nostalgic"},
+    {"text": "night highway outrun fast driving octave bass", "vibe": {"brightness": 0.55, "tension": 0.5, "density": 0.7, "groove": 0.85}, "mood": "drive"},
+    {"text": "bright uplifting sunrise golden hopeful anthem", "vibe": {"brightness": 0.85, "tension": 0.2, "density": 0.55, "groove": 0.6}, "mood": "sunrise"},
+    {"text": "smoky noir jazz rain saxophone late night", "vibe": {"brightness": 0.35, "tension": 0.5, "density": 0.4, "groove": 0.6}, "mood": "noir"},
+    {"text": "menacing darksynth pursuit distorted bass action", "vibe": {"brightness": 0.3, "tension": 0.85, "density": 0.75, "groove": 0.8}, "mood": "chase"},
     {"text": "cold deep space ambient drift vast reverb", "vibe": {"brightness": 0.35, "tension": 0.25, "density": 0.3, "groove": 0.25}, "mood": "space"},
     {"text": "dark midnight industrial pulse aggressive bass", "vibe": {"brightness": 0.3, "tension": 0.75, "density": 0.65, "groove": 0.7}, "mood": "dark"},
     {"text": "dreamy lush pastel floating major seventh haze", "vibe": {"brightness": 0.7, "tension": 0.2, "density": 0.45, "groove": 0.4}, "mood": "dreamy"},

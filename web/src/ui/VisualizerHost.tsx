@@ -3,6 +3,7 @@ import { createLandscapeScene, LANDSCAPE_OPTIONS } from './visual/landscape';
 import { createSpectrogramScene, SPECTROGRAM_OPTIONS } from './visual/spectrogram';
 import { createTimelineScene, TIMELINE_OPTIONS } from './visual/timeline';
 import { VisualCanvas } from './visual/VisualCanvas';
+import { VISUAL_MODE_HINTS } from './controlHints';
 import { VISUAL_MODES, VISUAL_MODE_LABEL, useVisualMode, type VisualMode } from './visualMode';
 
 function ModeView({ mode }: { mode: VisualMode }) {
@@ -56,6 +57,7 @@ export function VisualizerHost() {
               role="radio"
               aria-checked={m === mode}
               className={m === mode ? 'vhost__mode is-active' : 'vhost__mode'}
+              title={VISUAL_MODE_HINTS[m]}
               onClick={() => setMode(m)}
             >
               {VISUAL_MODE_LABEL[m]}

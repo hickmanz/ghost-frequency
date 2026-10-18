@@ -5,10 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
-  type ChangeEvent,
-  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
 } from 'react';
 import type { LayerId, MoodId } from '@shared/index';
 import { useStore } from '../services/store';
@@ -17,34 +14,32 @@ import { formatOverridesForCopy, getDefaultValue } from '../tuning/defaults';
 import { copyText } from './clipboard';
 import { buildSections, findOption, levelToMeter, waveGlyphPoints, type WaveKind } from './labMath';
 import { getLabSource } from './labSource';
-import {
-  FRAC_HALF,
-  FRAC_TALL,
-  beginParamDrag,
-  clampFrac,
-  clearParamFocus,
-  focusParam,
-  hoverParam,
-  useLabUi,
-} from './labState';
+import { beginParamDrag, clearParamFocus, focusParam, hoverParam, useLabUi } from './labState';
 import { LabVisuals } from './LabVisuals';
+import { Knob } from './Knob';
 import {
   formatValue,
   isModified,
+  normToValue,
   resolveValue,
-  sliderSteps,
-  sliderToValue,
+  roundToStep,
   valueToNorm,
   valueToOverride,
-  valueToSlider,
 } from './tuningMath';
+import { Settings2 } from 'lucide-react';
 import { notify, togglePlayback } from './uiState';
+
+const LAB_BTN_ICON = { size: 18, strokeWidth: 2 } as const;
 import { smoothValue } from './visualizerMath';
 
 const MOOD_LABEL: Record<MoodId, string> = {
   dreamy: 'Dreamy',
-  dark: 'Dark',
+  sunrise: 'Sunrise',
   nostalgic: 'Nostalgic',
+  drive: 'Night Drive',
+  chase: 'Chase',
+  dark: 'Dark',
+  noir: 'Neon Noir',
   space: 'Space Ambient',
 };
 
@@ -83,20 +78,27 @@ function isLayerGroup(id: TuningGroupId): id is LayerId {
 export function SoundLabButton() {
   const open = useStore((s) => s.labOpen);
   const setLabOpen = useStore((s) => s.setLabOpen);
+  const mood = useStore((s) => s.params.mood);
+  const changed = useStore((s) => Object.keys(s.tuning[mood] ?? {}).length);
   return (
     <button
       type="button"
-      className={`btn btn--small btn--secondary lab-toggle${open ? ' is-active' : ''}`}
+      className={`btn btn--small btn--deck lab-toggle${open ? ' is-active' : ''}${changed > 0 ? ' has-changes' : ''}`}
       aria-pressed={open}
       aria-controls="sound-lab"
       onClick={() => setLabOpen(!open)}
       title="Sound Lab: tune instrument sounds by ear (L)"
     >
       <span className="btn__icon" aria-hidden="true">
-        {'\u2699'}
+        <Settings2 {...LAB_BTN_ICON} />
       </span>
       <span>Sound Lab</span>
-      <kbd>L</kbd>
+      {changed > 0 && (
+        <span className="lab-toggle__badge" aria-label={`${changed} tuning changes`}>
+          {changed}
+        </span>
+      )}
+      <kbd className="lab-toggle__kbd">L</kbd>
     </button>
   );
 }
@@ -138,18 +140,19 @@ function useRowHandlers(key: string) {
   );
 }
 
-const SliderRow = memo(function SliderRow({ param, mood }: { param: TuningParam; mood: MoodId }) {
+const KnobRow = memo(function KnobRow({ param, mood }: { param: TuningParam; mood: MoodId }) {
   const override = useStore((s) => s.tuning[mood]?.[param.key]);
   const def = useMemo(() => getDefaultValue(mood, param.key), [mood, param.key]);
   const value = resolveValue(param, override, def);
   const modified = isModified(param, override, def);
-  const steps = sliderSteps(param);
-  const pos = valueToSlider(param, value);
+  const norm = valueToNorm(param, value);
+  const defNorm = def !== undefined ? valueToNorm(param, def) : undefined;
   const handlers = useRowHandlers(param.key);
+  const onInteractStart = useCallback(() => beginParamDrag(param.key), [param.key]);
 
   const onChange = useCallback(
-    (e: ChangeEvent<HTMLInputElement>) => {
-      const next = valueToOverride(param, sliderToValue(param, Number(e.currentTarget.value)), def);
+    (n: number) => {
+      const next = valueToOverride(param, roundToStep(param, normToValue(param, n)), def);
       const st = useStore.getState();
       if (st.tuning[mood]?.[param.key] === next) return;
       st.setTuningValue(mood, param.key, next);
@@ -157,59 +160,17 @@ const SliderRow = memo(function SliderRow({ param, mood }: { param: TuningParam;
     [param, mood, def],
   );
 
-  const reset = useCallback(() => {
-    useStore.getState().setTuningValue(mood, param.key, undefined);
-  }, [mood, param.key]);
-
-  const style = {
-    '--pct': `${(pos / steps) * 100}%`,
-    '--def': def === undefined ? '-10%' : `${valueToNorm(param, def) * 100}%`,
-  } as CSSProperties;
-  const text = formatValue(param, value);
-  const inputId = `lab-${param.key}`;
-  const hintId = `${inputId}-hint`;
-
   return (
-    <div className={`lab-row${modified ? ' is-modified' : ''}`} {...handlers}>
-      <div className="lab-row__head">
-        <label className="lab-row__label" htmlFor={inputId} title={param.hint}>
-          {modified && <span className="lab-row__dot" aria-hidden="true" title="Changed from default" />}
-          <span className="lab-row__name">{param.label}</span>
-        </label>
-        <output className="lab-row__value" htmlFor={inputId}>
-          {text}
-        </output>
-        <button
-          type="button"
-          className="lab-row__reset"
-          onClick={reset}
-          disabled={!modified}
-          aria-label={`Reset ${param.label} to default`}
-          title="Reset to default"
-        >
-          {'\u21ba'}
-        </button>
-      </div>
-      <div className="lab-row__track" style={style}>
-        <input
-          id={inputId}
-          className="slider__input lab-row__input"
-          type="range"
-          min={0}
-          max={steps}
-          step={1}
-          value={pos}
-          aria-label={`${param.label}${modified ? ' (changed)' : ''}`}
-          aria-valuetext={text}
-          aria-describedby={hintId}
-          title="Double-click to reset"
-          onChange={onChange}
-          onDoubleClick={reset}
-        />
-      </div>
-      <p className="lab-row__hint" id={hintId} title={param.hint}>
-        {param.hint}
-      </p>
+    <div className={`lab-knob${modified ? ' is-modified' : ''}`} {...handlers} title={param.hint}>
+      <Knob
+        label={param.label}
+        value={norm}
+        onChange={onChange}
+        display={formatValue(param, value)}
+        defaultValue={defNorm}
+        onInteractStart={onInteractStart}
+        title={param.hint}
+      />
     </div>
   );
 });
@@ -326,7 +287,7 @@ const ParamRow = memo(function ParamRow({ param, mood }: { param: TuningParam; m
   return param.kind === 'choice' && param.options && param.options.length > 0 ? (
     <ChoiceRow param={param} mood={mood} />
   ) : (
-    <SliderRow param={param} mood={mood} />
+    <KnobRow param={param} mood={mood} />
   );
 });
 
@@ -613,102 +574,40 @@ const GroupPanel = memo(function GroupPanel({ group, mood }: { group: TuningGrou
       </div>
       <div className="lab-main__scroll">
         <div className="lab-params">
-          {sections.map((sec) => (
-            <div className={`lab-sec lab-sec--${sec.id}`} key={sec.id}>
-              <h4 className="lab-sec__title">{sec.label}</h4>
-              {sec.params.map((p) => (
-                <ParamRow key={p.key} param={p} mood={mood} />
-              ))}
-            </div>
-          ))}
+          {sections.map((sec) => {
+            const knobs = sec.params.filter((p) => p.kind !== 'choice' || !p.options?.length);
+            const choices = sec.params.filter((p) => p.kind === 'choice' && p.options && p.options.length > 0);
+            return (
+              <div className={`lab-sec lab-sec--${sec.id}`} key={sec.id}>
+                <h4 className="lab-sec__title">{sec.label}</h4>
+                {knobs.length > 0 && (
+                  <div className="lab-sec__knobs">
+                    {knobs.map((p) => (
+                      <KnobRow key={p.key} param={p} mood={mood} />
+                    ))}
+                  </div>
+                )}
+                {choices.map((p) => (
+                  <ParamRow key={p.key} param={p} mood={mood} />
+                ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
   );
 });
 
-// ---------------------------------------------------------------------------------------------
-// dock chrome: drag handle + header
-// ---------------------------------------------------------------------------------------------
-
-function setDockFrac(f: number): void {
-  document.documentElement.style.setProperty('--lab-frac', String(f));
-}
-
-function DockHandle() {
-  const frac = useLabUi((s) => s.frac);
-  const drag = useRef<{ y: number; frac: number; moved: boolean; cur: number } | null>(null);
-
-  const toggle = () => {
-    const f = useLabUi.getState().frac;
-    useLabUi.getState().setFrac(f > (FRAC_HALF + FRAC_TALL) / 2 ? FRAC_HALF : FRAC_TALL);
-  };
-
-  const onDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    const f = useLabUi.getState().frac;
-    drag.current = { y: e.clientY, frac: f, moved: false, cur: f };
-  };
-  const onMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    const d = drag.current;
-    if (!d) return;
-    if (Math.abs(e.clientY - d.y) > 3) d.moved = true;
-    if (!d.moved) return;
-    d.cur = clampFrac(d.frac + (d.y - e.clientY) / Math.max(1, window.innerHeight));
-    setDockFrac(d.cur);
-  };
-  const onUp = () => {
-    const d = drag.current;
-    drag.current = null;
-    if (!d) return;
-    if (d.moved) useLabUi.getState().setFrac(d.cur);
-    else toggle();
-  };
-  const onKey = (e: ReactKeyboardEvent<HTMLDivElement>) => {
-    const st = useLabUi.getState();
-    if (e.key === 'ArrowUp') st.setFrac(st.frac + 0.05);
-    else if (e.key === 'ArrowDown') st.setFrac(st.frac - 0.05);
-    else if (e.key === 'Enter' || e.key === ' ') toggle();
-    else return;
-    e.preventDefault();
-  };
-
-  return (
-    <div
-      className="lab-handle"
-      role="separator"
-      aria-orientation="horizontal"
-      aria-label="Resize Sound Lab: drag, click to switch half / tall, or use the up and down arrow keys"
-      aria-valuemin={30}
-      aria-valuemax={92}
-      aria-valuenow={Math.round(frac * 100)}
-      tabIndex={0}
-      title="Drag to resize, click to switch half / tall"
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerCancel={() => {
-        drag.current = null;
-        setDockFrac(useLabUi.getState().frac);
-      }}
-      onKeyDown={onKey}
-    >
-      <span className="lab-handle__grip" aria-hidden="true" />
-    </div>
-  );
-}
-
 const LabHeader = memo(function LabHeader({ mood }: { mood: MoodId }) {
   const modifiedCount = useStore((s) => Object.keys(s.tuning[mood] ?? {}).length);
   const setLabOpen = useStore((s) => s.setLabOpen);
   const playing = useStore((s) => s.playing);
-  const tall = useLabUi((s) => s.frac > (FRAC_HALF + FRAC_TALL) / 2);
 
   const onCopy = useCallback(async () => {
     const overrides = useStore.getState().tuning[mood] ?? {};
     if (Object.keys(overrides).length === 0) {
-      notify('Nothing to copy yet - move a slider first.');
+      notify('Nothing to copy yet — adjust a knob first.');
       return;
     }
     const ok = await copyText(formatOverridesForCopy(mood, overrides));
@@ -748,15 +647,6 @@ const LabHeader = memo(function LabHeader({ mood }: { mood: MoodId }) {
         </span>
       </div>
       <div className="lab-head__window">
-        <button
-          type="button"
-          className="btn btn--small"
-          onClick={() => useLabUi.getState().setFrac(tall ? FRAC_HALF : FRAC_TALL)}
-          aria-label={tall ? 'Make the Sound Lab shorter' : 'Make the Sound Lab taller'}
-          title={tall ? 'Shorter' : 'Taller'}
-        >
-          {tall ? '\u25bc' : '\u25b2'}
-        </button>
         <button type="button" className="btn btn--small" onClick={() => setLabOpen(false)} aria-label="Close Sound Lab" title="Close (Esc)">
           {'\u2715'}
         </button>
@@ -816,31 +706,31 @@ function LabDock({ groups }: { groups: readonly TuningGroup[] }) {
 
 export function SoundLab() {
   const open = useStore((s) => s.labOpen);
-  const frac = useLabUi((s) => s.frac);
+  const setLabOpen = useStore((s) => s.setLabOpen);
   const groups = useMemo(() => orderGroups(TUNING_SCHEMA), []);
 
-  // page gets bottom padding while the dock is open (CSS reads html.has-lab + --lab-frac)
   useEffect(() => {
     if (!open) return;
-    const root = document.documentElement;
-    root.classList.add('has-lab');
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     return () => {
-      root.classList.remove('has-lab');
-      root.style.removeProperty('--lab-frac');
+      document.body.style.overflow = prev;
     };
   }, [open]);
-  useEffect(() => {
-    if (open) setDockFrac(frac);
-  }, [open, frac]);
+
+  if (!open) return null;
 
   return (
-    <aside id="sound-lab" className={`lab${open ? ' is-open' : ''}`} role="region" aria-label="Sound Lab" hidden={!open}>
-      {open && (
-        <>
-          <DockHandle />
-          <LabDock groups={groups} />
-        </>
-      )}
-    </aside>
+    <div className="lab-shell" role="presentation">
+      <button
+        type="button"
+        className="lab-backdrop"
+        aria-label="Close Sound Lab"
+        onClick={() => setLabOpen(false)}
+      />
+      <aside id="sound-lab" className="lab is-open" role="dialog" aria-modal="true" aria-label="Sound Lab">
+        <LabDock groups={groups} />
+      </aside>
+    </div>
   );
 }

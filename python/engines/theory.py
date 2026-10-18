@@ -21,6 +21,10 @@ MOOD_KEYS: dict[str, list[tuple[int, str]]] = {
     "dark": [(8, "phrygian"), (10, "aeolian"), (3, "locrian")],
     "nostalgic": [(9, "aeolian"), (4, "mixolydian"), (11, "dorian")],
     "space": [(0, "dorian"), (7, "mixolydian"), (5, "phrygian")],
+    "sunrise": [(0, "ionian"), (7, "mixolydian"), (2, "ionian")],
+    "drive": [(9, "aeolian"), (4, "aeolian"), (2, "dorian")],
+    "chase": [(4, "phrygian"), (9, "harmonicMinor"), (1, "phrygian")],
+    "noir": [(2, "dorian"), (0, "harmonicMinor"), (7, "dorian")],
 }
 
 MOOD_TEMPO: dict[str, tuple[int, int]] = {
@@ -28,6 +32,10 @@ MOOD_TEMPO: dict[str, tuple[int, int]] = {
     "dark": (80, 108),
     "nostalgic": (84, 102),
     "space": (68, 88),
+    "sunrise": (100, 118),
+    "drive": (112, 128),
+    "chase": (100, 120),
+    "noir": (76, 92),
 }
 
 # Roman numerals -> diatonic triad intervals (semitones from root)
@@ -76,7 +84,7 @@ def sanitize_vibe(raw: Any) -> dict[str, float]:
 
 
 def sanitize_params(p: dict[str, Any]) -> dict[str, Any]:
-    moods = {"dreamy", "dark", "nostalgic", "space"}
+    moods = set(MOOD_KEYS)
     mood = p.get("mood", "nostalgic")
     if mood not in moods:
         mood = "nostalgic"

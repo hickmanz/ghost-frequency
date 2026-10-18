@@ -157,7 +157,7 @@
       "type": "object",
       "required": ["mood", "energy", "complexity", "variation", "tempo", "seed"],
       "properties": {
-        "mood": { "type": "string", "enum": ["dreamy", "dark", "nostalgic", "space"] },
+        "mood": { "type": "string", "enum": ["dreamy", "sunrise", "nostalgic", "drive", "chase", "dark", "noir", "space"] },
         "energy": { "type": "number", "minimum": 0, "maximum": 1 },
         "complexity": { "type": "number", "minimum": 0, "maximum": 1 },
         "variation": { "type": "number", "minimum": 0, "maximum": 1 },
