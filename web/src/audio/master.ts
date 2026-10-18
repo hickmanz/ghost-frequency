@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import { clamp01, faderToGain, masterFilterHz, saturationCurve } from './mapping';
 import { glideParam, rampParam } from './instruments/instrument';
+import { isIOSLike } from '../services/staticHost';
 
 /** Analyser size: 512 frequency bins (fftSize 1024). */
 export const FFT_SIZE = 512;
@@ -44,7 +45,7 @@ export class MasterBus {
     const sr = Tone.getContext().sampleRate;
     this.input = new Tone.Gain(1);
     this.saturator = new Tone.WaveShaper(saturationCurve(0.9), 2048);
-    this.saturator.oversample = '2x';
+    if (!isIOSLike()) this.saturator.oversample = '2x';
     this.lowCut = new Tone.Filter({ type: 'highpass', frequency: 30, Q: 0.7, rolloff: -12 });
     this.shelf = new Tone.Filter({ type: 'highshelf', frequency: 7500, gain: 1.5 });
     this.lp = new Tone.Filter({ type: 'lowpass', frequency: masterFilterHz(1, sr), Q: 0.5, rolloff: -12 });

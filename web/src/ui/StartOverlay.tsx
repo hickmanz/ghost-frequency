@@ -56,7 +56,11 @@ export function StartOverlay() {
             {error}
           </p>
         )}
-        <p className="overlay__hint">Headphones recommended</p>
+        <p className="overlay__hint">
+          {isIOSLike()
+            ? 'Use headphones or turn off the silent switch (side button). Tap Play once if the bar counter moves but you hear nothing.'
+            : 'Headphones recommended'}
+        </p>
       </div>
     </div>
   );

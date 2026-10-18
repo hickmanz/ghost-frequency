@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import type { AutomationEvent, EventBatch, NoteEvent, PaletteEvent } from '@shared/index';
 import { beatsToSeconds, clampBpm, rampBeatsToSeconds, secondsPerBeat, splitBeatToTick } from './mapping';
+import { isIOSLike } from '../services/staticHost';
 
 export type TransportLike = ReturnType<typeof Tone.getTransport>;
 
@@ -221,7 +222,18 @@ export class Scheduler {
   private scheduleAt(beat: number, fn: (time: number) => void): void {
     const ppq = this.ppq;
     const { tick, fraction } = splitBeatToTick(beat, ppq);
-    if (this.isPast(tick)) return;
+    if (this.isPast(tick)) {
+      // iOS: if the transport just started, tick-0 can look "past" while the clock is still at 0 — fire now.
+      if (isIOSLike() && beat < 1 && this.transport.state === 'started') {
+        try {
+          fn(this.ctx.now() + 0.002);
+        } catch (err) {
+          this.errorCount++;
+          if (this.errorCount <= 5) console.warn('[audio] catch-up event failed', err);
+        }
+      }
+      return;
+    }
     let id = -1;
     id = this.transport.scheduleOnce((time) => {
       this.pending.delete(id);

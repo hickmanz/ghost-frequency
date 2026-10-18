@@ -5,7 +5,7 @@ import { AudioGraph } from './graph';
 import { Scheduler, type SchedulerHost } from './scheduler';
 import { MOOD_RAMP_SECONDS, setSongPalette, setTuningOverrides, splitDrumKit } from './presets';
 import { brightToMasterFilter } from './mapping';
-import { ensureAudioRunning, usePlaybackLatencyContext } from './mobileAudio';
+import { configureMobileContext, ensureAudioRunning, usePlaybackLatencyContext } from './mobileAudio';
 
 const PAUSE_FADE = 0.08;
 /** Ramp (s) of live Sound Lab tuning changes: short enough to feel immediate, long enough to be click-free. */
@@ -75,7 +75,7 @@ export class ToneRenderer implements AudioRenderer {
     await ensureAudioRunning();
     if (!this.graph && !contextConfigured) {
       contextConfigured = true;
-      // A larger buffer + lookahead is much more robust on desktop; iOS keeps the default context.
+      configureMobileContext();
       if (usePlaybackLatencyContext()) {
         try {
           Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.15 }), true);
@@ -83,6 +83,8 @@ export class ToneRenderer implements AudioRenderer {
         } catch {
           // keep Tone's default context
         }
+      } else {
+        await ensureAudioRunning();
       }
     }
     if (this.disposed) throw new Error('ToneRenderer disposed');
@@ -113,8 +115,20 @@ export class ToneRenderer implements AudioRenderer {
     const s = this.scheduler;
     if (!g || !s || this.disposed) return;
     void ensureAudioRunning().catch(() => undefined);
-    g.setPlayGate(true, Tone.now(), PAUSE_FADE);
+    const t = Tone.now();
+    g.master.fadeTo(1, t, 0.02);
+    g.setPlayGate(true, t, PAUSE_FADE);
     s.play();
+  }
+
+  /** Push tone macros + open master path (first play skips store subscription). */
+  primeOutput(tone: ToneParams): void {
+    this.applyToneMacros(tone);
+    const g = this.graph;
+    if (!g) return;
+    const t = Tone.now();
+    g.master.fadeTo(1, t, 0.02);
+    g.setPlayGate(true, t, 0.02);
   }
 
   pause(): void {

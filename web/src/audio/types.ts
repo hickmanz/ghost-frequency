@@ -83,6 +83,8 @@ export interface AudioRenderer {
 
   /** Live tone macros from Lab/Radio + director (optional). */
   applyToneMacros?(tone: import('@shared/index').ToneParams): void;
+  /** Open master fade / play gate and apply tone macros (mobile / first play). */
+  primeOutput?(tone: import('@shared/index').ToneParams): void;
 
   dispose(): void;
 }

@@ -4,6 +4,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   type ChangeEvent,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -426,13 +427,36 @@ const LayerTab = memo(function LayerTab({
   );
 });
 
+const COMPACT_LAB_MQ = '(max-width: 760px)';
+
+function useCompactLabLayout(): boolean {
+  const [compact, setCompact] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(COMPACT_LAB_MQ).matches : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(COMPACT_LAB_MQ);
+    const sync = () => setCompact(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+  return compact;
+}
+
 const LayerTabs = memo(function LayerTabs({ groups, mood, activeId }: { groups: readonly TuningGroup[]; mood: MoodId; activeId: string }) {
+  const compact = useCompactLabLayout();
   const meters = useRef(new Map<string, HTMLElement>());
   const registerMeter = useCallback((id: string, el: HTMLElement | null) => {
     if (el) meters.current.set(id, el);
     else meters.current.delete(id);
   }, []);
   const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!compact) return;
+    const tab = listRef.current?.querySelector<HTMLElement>(`[data-tab="${activeId}"]`)?.closest('.lab-tab');
+    tab?.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
+  }, [activeId, compact]);
 
   // one rAF loop for all meters; only runs while mounted (dock open) and the tab is visible
   useEffect(() => {
@@ -500,7 +524,13 @@ const LayerTabs = memo(function LayerTabs({ groups, mood, activeId }: { groups: 
 
   return (
     <nav className="lab-tabs" aria-label="Instruments">
-      <div className="lab-tabs__list" role="tablist" aria-orientation="vertical" ref={listRef} onKeyDown={onKeyDown}>
+      <div
+        className="lab-tabs__list"
+        role="tablist"
+        aria-orientation={compact ? 'horizontal' : 'vertical'}
+        ref={listRef}
+        onKeyDown={onKeyDown}
+      >
         {groups.map((g) => (
           <LayerTab key={g.id} group={g} mood={mood} active={g.id === activeId} registerMeter={registerMeter} />
         ))}

@@ -107,10 +107,14 @@ export class Conductor implements PlaybackController {
       this.markers = [];
       this.feed.clear();
       useStore.getState().setAudioReady(true);
+      this.applyToneMacros();
+      this.renderer.primeOutput?.(effectiveTone(st.tone, st.mod, pinSet(st.pins)));
     }
     if (this.resetting) await this.resetting;
-    this.pump(true); // pre-fill before the clock starts
+    // Schedule while transport is stopped so tick-0 events are not treated as "past" (Safari-sensitive).
+    this.pump(true);
     this.renderer.play();
+    this.applyToneMacros();
     this.playing = true;
     useStore.getState().setPlaying(true);
     this.startTimers();
