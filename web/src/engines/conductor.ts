@@ -6,6 +6,7 @@ import type { PlaybackController } from '../services/controller';
 import { useStore } from '../services/store';
 import { effectiveParams, effectiveTone, pinSet } from '../services/director/effective';
 import { rerollSongHomes } from '../services/director/songMacros';
+import { notify } from '../ui/uiState';
 import { keyLabel } from '../composition/theory';
 import { EventFeed } from './eventFeed';
 
@@ -266,6 +267,9 @@ export class Conductor implements PlaybackController {
       }
     } catch (err) {
       console.error('[Conductor] generation failed', err);
+      if (initialFill) {
+        notify(`Music engine error: ${err instanceof Error ? err.message : String(err)}`, 'error');
+      }
     } finally {
       this.pumping = false;
     }

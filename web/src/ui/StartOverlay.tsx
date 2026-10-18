@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../services/store';
+import { primeAudioUnlock } from '../audio/mobileAudio';
+import { isIOSLike } from '../services/staticHost';
 import { errorMessage, tryGetController } from './uiState';
 
 export function StartOverlay() {
@@ -12,6 +14,7 @@ export function StartOverlay() {
 
   const begin = async () => {
     if (starting) return;
+    primeAudioUnlock();
     setError(null);
     const c = tryGetController();
     if (!c) {
@@ -38,8 +41,15 @@ export function StartOverlay() {
           GHOST<span className="overlay__title-accent"> FREQUENCY</span>
         </h1>
         <p className="overlay__tagline">infinite procedural synthwave &amp; ambient</p>
-        <button type="button" className="overlay__button" onClick={begin} disabled={starting} autoFocus>
-          {starting ? 'Initialising audio...' : 'Click to begin'}
+        <button
+          type="button"
+          className="overlay__button"
+          onPointerDown={primeAudioUnlock}
+          onClick={() => void begin()}
+          disabled={starting}
+          autoFocus
+        >
+          {starting ? 'Initialising audio...' : isIOSLike() ? 'Tap to begin' : 'Click to begin'}
         </button>
         {error && (
           <p className="overlay__error" role="alert">

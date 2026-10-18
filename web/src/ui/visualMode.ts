@@ -4,7 +4,7 @@ import { create } from 'zustand';
 export type VisualMode = 'classic' | 'landscape' | 'spectrogram' | 'timeline';
 
 export const VISUAL_MODES: readonly VisualMode[] = ['classic', 'landscape', 'spectrogram', 'timeline'];
-export const DEFAULT_VISUAL_MODE: VisualMode = 'classic';
+export const DEFAULT_VISUAL_MODE: VisualMode = 'landscape';
 export const VISUAL_MODE_KEY = 'ghost-frequency:visualMode:v1';
 
 export const VISUAL_MODE_LABEL: Record<VisualMode, string> = {

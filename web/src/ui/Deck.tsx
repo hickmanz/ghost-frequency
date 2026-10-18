@@ -1,6 +1,7 @@
 import { MOOD_IDS } from '@shared/index';
 import { useStore } from '../services/store';
 import { getController } from '../services/controller';
+import { primeAudioUnlock } from '../audio/mobileAudio';
 import { randomSeed, regenerateWithSeed, togglePlayback } from './uiState';
 
 export function Deck() {
@@ -28,7 +29,13 @@ export function Deck() {
       </div>
       <div className="deck__transport">
         <div className="deck__actions">
-          <button type="button" className="btn btn--play" disabled={busy} onClick={() => void togglePlayback()}>
+          <button
+            type="button"
+            className="btn btn--play"
+            disabled={busy}
+            onPointerDown={primeAudioUnlock}
+            onClick={() => void togglePlayback()}
+          >
             {playing ? 'Pause' : 'Play'}
           </button>
           <button

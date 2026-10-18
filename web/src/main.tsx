@@ -11,6 +11,7 @@ import { Conductor } from './engines/conductor';
 import { createEngineFactory } from './services/backendService';
 import { loadBackend, startBackendPersistence } from './services/backendPersist';
 import { DEFAULT_BROWSER_ENGINE_ID, listBrowserEngines, normalizeBrowserEngineId } from './engines/registry';
+import { isStaticDemoHost } from './services/staticHost';
 import { App } from './ui/App';
 import { startDirectorModulator } from './services/director/modulator';
 import { randomSeed } from './ui/uiState';
@@ -43,6 +44,18 @@ if (savedBackend) {
         ? normalizeBrowserEngineId(savedBackend.engineId ?? DEFAULT_BROWSER_ENGINE_ID)
         : (savedBackend.engineId ?? 'py-markov'),
     engines: mode === 'browser' ? listBrowserEngines() : useStore.getState().backend.engines,
+  });
+}
+
+// GitHub Pages has no Python server; stale localStorage "python" mode leaves the app waiting on a remote engine.
+if (isStaticDemoHost()) {
+  useStore.getState().setBackend({
+    mode: 'browser',
+    status: 'disabled',
+    engineId: normalizeBrowserEngineId(useStore.getState().backend.engineId),
+    engines: listBrowserEngines(),
+    lastError: undefined,
+    activeSource: undefined,
   });
 }
 

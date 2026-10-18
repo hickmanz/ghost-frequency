@@ -5,6 +5,7 @@ import { AudioGraph } from './graph';
 import { Scheduler, type SchedulerHost } from './scheduler';
 import { MOOD_RAMP_SECONDS, setSongPalette, setTuningOverrides, splitDrumKit } from './presets';
 import { brightToMasterFilter } from './mapping';
+import { ensureAudioRunning, usePlaybackLatencyContext } from './mobileAudio';
 
 const PAUSE_FADE = 0.08;
 /** Ramp (s) of live Sound Lab tuning changes: short enough to feel immediate, long enough to be click-free. */
@@ -71,16 +72,19 @@ export class ToneRenderer implements AudioRenderer {
 
   private async doStart(): Promise<void> {
     if (this.disposed) throw new Error('ToneRenderer disposed');
+    await ensureAudioRunning();
     if (!this.graph && !contextConfigured) {
       contextConfigured = true;
-      // A larger buffer + lookahead is much more robust for hours of generative playback than 'interactive'.
-      try {
-        Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.15 }), true);
-      } catch {
-        // keep Tone's default context
+      // A larger buffer + lookahead is much more robust on desktop; iOS keeps the default context.
+      if (usePlaybackLatencyContext()) {
+        try {
+          Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.15 }), true);
+          await ensureAudioRunning();
+        } catch {
+          // keep Tone's default context
+        }
       }
     }
-    await Tone.start();
     if (this.disposed) throw new Error('ToneRenderer disposed');
     if (!this.graph) {
       const graph = new AudioGraph({ mood: this.mood, mixer: this.mixer, muted: this.muted, solo: this.solo });
@@ -108,8 +112,7 @@ export class ToneRenderer implements AudioRenderer {
     const g = this.graph;
     const s = this.scheduler;
     if (!g || !s || this.disposed) return;
-    const ctx = Tone.getContext();
-    if (ctx.state !== 'running') void ctx.resume().catch(() => undefined);
+    void ensureAudioRunning().catch(() => undefined);
     g.setPlayGate(true, Tone.now(), PAUSE_FADE);
     s.play();
   }

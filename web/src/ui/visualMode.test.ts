@@ -12,10 +12,10 @@ describe('parseVisualMode / serializeVisualMode', () => {
   it('round-trips every mode', () => {
     for (const m of VISUAL_MODES) expect(parseVisualMode(serializeVisualMode(m))).toBe(m);
   });
-  it('falls back to classic for invalid input', () => {
-    expect(DEFAULT_VISUAL_MODE).toBe('classic');
+  it('falls back to default for invalid input', () => {
+    expect(DEFAULT_VISUAL_MODE).toBe('landscape');
     for (const bad of [null, undefined, '', 'Classic', 'LANDSCAPE', 'nope', 3, {}, [], true]) {
-      expect(parseVisualMode(bad)).toBe('classic');
+      expect(parseVisualMode(bad)).toBe('landscape');
     }
   });
   it('isVisualMode guards', () => {
